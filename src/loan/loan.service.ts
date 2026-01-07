@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, NotFoundException, ForbiddenException 
 import type { Prisma, Loan, LoanStatus, UserCategory, DocumentType } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { TrustScoreHistoryService } from '../trust-score-history/trust-score-history.service';
+import { NotificationService } from '../notification/notification.service';
 import { CreateLoanDto } from './dto/create-loan.dto';
 import { UpdateLoanDto } from './dto/update-loan.dto';
 
@@ -10,6 +11,7 @@ export class LoanService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly trustScoreHistoryService: TrustScoreHistoryService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async createLoan(dto: CreateLoanDto): Promise<Loan | any> {
@@ -38,7 +40,7 @@ export class LoanService {
    * Accept a loan offer: borrower confirms and a loan is created from the selected offer + request
    */
   async createFromOffer(offerId: string, actingBorrowerId: string, documents: Array<{ documentType: string; documentUrl: string }>): Promise<Loan> {
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const toNumber = (v: any) => (v && typeof v === 'object' && typeof v.toNumber === 'function' ? v.toNumber() : Number(v));
 
       const offer = await tx.loanOffer.findUnique({
@@ -72,7 +74,7 @@ export class LoanService {
       const durationDays = request.durationDays;
       const purpose = request.purpose;
 
-      const totalAmount: number = amount + amount * (interestRate / 100);
+      const totalAmount: number = amount + (amount * interestRate) / 100;
 
       const loan = await tx.loan.create({
         data: {
@@ -105,8 +107,10 @@ export class LoanService {
       });
 
       // Update request funding tallies and status
-      const newAmountFunded: number = toNumber(request.amountFunded ?? 0) + amount;
-      const amountNeeded: number = Math.max(0, toNumber(request.amount) - newAmountFunded);
+      const previousFunded = request.amountFunded ? (typeof request.amountFunded === 'object' && typeof request.amountFunded.toNumber === 'function' ? request.amountFunded.toNumber() : Number(request.amountFunded)) : 0;
+      const newAmountFunded: number = previousFunded + amount;
+      const totalRequested = request.amount ? (typeof request.amount === 'object' && typeof request.amount.toNumber === 'function' ? request.amount.toNumber() : Number(request.amount)) : 0;
+      const amountNeeded: number = Math.max(0, totalRequested - newAmountFunded);
       await tx.loanRequest.update({
         where: { id: request.id },
         data: {
@@ -127,8 +131,35 @@ export class LoanService {
         });
       }
 
-      return loan;
+      return { loan, offer };
     });
+
+    // Notify lender and borrower (outside transaction)
+    const borrower = await this.prisma.user.findUnique({
+      where: { id: actingBorrowerId },
+      select: { firstName: true, lastName: true },
+    });
+    const lender = await this.prisma.user.findUnique({
+      where: { id: result.offer.lenderId },
+      select: { firstName: true, lastName: true },
+    });
+
+    if (borrower && lender) {
+      const borrowerName = `${borrower.firstName} ${borrower.lastName}`;
+      const lenderName = `${lender.firstName} ${lender.lastName}`;
+      await this.notificationService.notifyLenderOfferAccepted(
+        result.offer.lenderId,
+        borrowerName,
+        Number(result.offer.amount),
+      );
+      await this.notificationService.notifyBorrowerOfferAccepted(
+        actingBorrowerId,
+        lenderName,
+        Number(result.offer.amount),
+      );
+    }
+
+    return result.loan;
   }
 
   async findAll(): Promise<Loan[] | any[]> {
@@ -339,7 +370,7 @@ export class LoanService {
     const dueDate = new Date(now);
     dueDate.setDate(dueDate.getDate() + loan.durationDays);
 
-    return this.prisma.loan.update({
+    const updatedLoan = await this.prisma.loan.update({
       where: { id: loanId },
       data: {
         signedByLender: true,
@@ -348,6 +379,35 @@ export class LoanService {
         dueDate,
       },
     });
+
+    // Notify borrower and lender of loan activation
+    const borrower = await this.prisma.user.findUnique({
+      where: { id: loan.borrowerId },
+      select: { firstName: true, lastName: true },
+    });
+    const lender = await this.prisma.user.findUnique({
+      where: { id: actingLenderId },
+      select: { firstName: true, lastName: true },
+    });
+
+    if (borrower && lender) {
+      const borrowerName = `${borrower.firstName} ${borrower.lastName}`;
+      const lenderName = `${lender.firstName} ${lender.lastName}`;
+      await this.notificationService.notifyBorrowerLoanSigned(
+        loan.borrowerId,
+        lenderName,
+        Number(loan.amount),
+        dueDate,
+      );
+      await this.notificationService.notifyLenderLoanSigned(
+        actingLenderId,
+        borrowerName,
+        Number(loan.amount),
+        dueDate,
+      );
+    }
+
+    return updatedLoan;
   }
 
   async findOne(id: string): Promise<Loan | any | null> {

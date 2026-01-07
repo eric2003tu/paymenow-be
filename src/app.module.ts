@@ -7,9 +7,10 @@ import { LoanRequestModule } from './loan-request/loan-request.module';
 import { LoanOfferModule } from './loan-offer/loan-offer.module';
 import { AuthModule } from './auth/auth.module';
 import { TrustScoreHistoryModule } from './trust-score-history/trust-score-history.module';
+import { NotificationModule } from './notification/notification.module';
 
 @Module({
-  imports: [UserModule, LoanModule, LoanRequestModule, LoanOfferModule, AuthModule, TrustScoreHistoryModule],
+  imports: [UserModule, LoanModule, LoanRequestModule, LoanOfferModule, AuthModule, TrustScoreHistoryModule, NotificationModule],
   controllers: [AppController],
   providers: [AppService],
 })

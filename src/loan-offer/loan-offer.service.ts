@@ -1,23 +1,49 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
+import { NotificationService } from '../notification/notification.service';
 import { CreateLoanOfferDto } from './dto/create-loan-offer.dto';
 import { UpdateLoanOfferDto } from './dto/update-loan-offer.dto';
 
 @Injectable()
 export class LoanOfferService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   async create(dto: CreateLoanOfferDto, actingUserId: string) {
     // Force lenderId to the authenticated user
     const { status, ...rest } = dto;
-    return this.prisma.loanOffer.create({
+    const offer = await this.prisma.loanOffer.create({
       data: {
         ...rest,
         lenderId: actingUserId,
         status: status as any, // Should be LoanOfferStatus enum, cast for now
         interestRate: dto.interestRate ?? 6.0,
       },
+      include: { loanRequest: true },
     });
+
+    // Notify borrower of the new offer
+    const lender = await this.prisma.user.findUnique({
+      where: { id: actingUserId },
+      select: { firstName: true, lastName: true },
+    });
+    const borrower = await this.prisma.user.findUnique({
+      where: { id: offer.loanRequest.borrowerId },
+      select: { firstName: true, lastName: true },
+    });
+
+    if (lender && borrower) {
+      const lenderName = `${lender.firstName} ${lender.lastName}`;
+      await this.notificationService.notifyBorrowerOfOfferCreated(
+        offer.loanRequest.borrowerId,
+        lenderName,
+        Number(offer.amount),
+      );
+    }
+
+    return offer;
   }
 
   async findAll() {

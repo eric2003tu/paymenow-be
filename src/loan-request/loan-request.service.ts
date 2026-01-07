@@ -8,11 +8,11 @@ import { UpdateLoanRequestDto } from './dto/update-loan-request.dto';
 export class LoanRequestService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createLoanRequest(dto: CreateLoanRequestDto): Promise<LoanRequest | any> {
+  async createLoanRequest(dto: CreateLoanRequestDto, borrowerId: string): Promise<LoanRequest | any> {
     try {
       return await this.prisma.loanRequest.create({
         data: {
-          borrowerId: dto.borrowerId,
+          borrowerId,
           amount: dto.amount,
           minAmount: dto.minAmount,
           interestRate: typeof dto.interestRate === 'number' ? dto.interestRate : 6.0,

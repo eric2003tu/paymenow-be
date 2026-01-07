@@ -20,11 +20,13 @@ export class LoanRequestController {
   constructor(private readonly loanRequestService: LoanRequestService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create a new loan request' })
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Create a new loan request (authenticated user becomes borrower)' })
   @ApiBody({ type: CreateLoanRequestDto })
   @ApiResponse({ status: 201, type: LoanRequestResponseDto })
-  async create(@Body() dto: CreateLoanRequestDto) {
-    return this.loanRequestService.createLoanRequest(dto);
+  async create(@Body() dto: CreateLoanRequestDto, @Req() req: any) {
+    return this.loanRequestService.createLoanRequest(dto, req.user.sub);
   }
 
   @Get()

@@ -2,11 +2,6 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsString, IsNumber, IsOptional, IsDateString, IsBoolean } from 'class-validator';
 
 export class CreateLoanRequestDto {
-  @ApiProperty({ example: 'borrower-id-123' })
-  @IsString()
-  @IsNotEmpty()
-  borrowerId: string;
-
   @ApiProperty({ example: 1000.00 })
   @IsNumber()
   @IsNotEmpty()

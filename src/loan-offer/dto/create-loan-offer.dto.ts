@@ -7,11 +7,6 @@ export class CreateLoanOfferDto {
   @IsNotEmpty()
   loanRequestId: string;
 
-  @ApiProperty({ example: 'lender-id-123' })
-  @IsString()
-  @IsNotEmpty()
-  lenderId: string;
-
   @ApiProperty({ example: 1000.00 })
   @IsNumber()
   @IsNotEmpty()
