@@ -28,10 +28,9 @@ export class UserService {
             },
             familyDetails: dto.familyDetails
               ? {
-                  create: (() => {
-                    const { children, ...rest } = dto.familyDetails;
-                    return rest;
-                  })(),
+                  create: {
+                    ...dto.familyDetails,
+                  },
                 }
               : undefined,
           },

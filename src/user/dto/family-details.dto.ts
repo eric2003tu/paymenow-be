@@ -1,21 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, IsArray, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
-
-class ChildDto {
-  @ApiProperty({ example: 'Jane Doe', description: 'Child name' })
-  @IsString()
-  name: string;
-
-  @ApiProperty({ example: '2015-06-01', description: 'Child date of birth' })
-  @IsString()
-  dateOfBirth: string;
-
-  @ApiProperty({ example: '1234567890123456', required: false, description: 'Child national ID (optional)' })
-  @IsOptional()
-  @IsString()
-  nationalId?: string;
-}
+import { IsOptional, IsString } from 'class-validator';
 
 export class FamilyDetailsDto {
   @ApiProperty({ example: 'Spouse Name', required: false, description: 'Spouse name (optional)' })
@@ -77,11 +61,4 @@ export class FamilyDetailsDto {
   @IsOptional()
   @IsString()
   emergencyContactRelation?: string;
-
-  @ApiProperty({ type: [ChildDto], required: false, description: 'List of children (optional)' })
-  @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => ChildDto)
-  children?: ChildDto[];
 }
