@@ -1,85 +1,169 @@
-import { Injectable, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, ConflictException, BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
+import { PrismaService } from '../prisma.service';
+import { User } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+  ) {}
 
-  async login(dto: any) {
-    // First validate the user
+  /**
+   * Login user and return access + refresh tokens
+   */
+  async login(dto: { email: string; password: string }) {
     const user = await this.validateUser(dto.email, dto.password);
     if (!user) {
-      throw new BadRequestException('Invalid credentials');
+      throw new BadRequestException('Invalid email or password');
     }
 
-    // Generate Access Token
+    const tokens = this.generateTokens(user);
+
+    // Update last login time
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+
+    return tokens;
+  }
+
+  /**
+   * Register new user
+   */
+  async register(dto: any) {
+    // Check if email already exists
+    const existingEmail = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+
+    if (existingEmail) {
+      throw new ConflictException('Email already registered');
+    }
+
+    // Check if phone already exists
+    const existingPhone = await this.prisma.user.findUnique({
+      where: { phone: dto.phone },
+    });
+
+    if (existingPhone) {
+      throw new ConflictException('Phone number already registered');
+    }
+
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
+
+    // Create user in database
+    const user = await this.prisma.user.create({
+      data: {
+        email: dto.email,
+        phone: dto.phone,
+        password: hashedPassword,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        dateOfBirth: new Date(dto.dateOfBirth),
+        maritalStatus: dto.maritalStatus,
+        nationalId: dto.nationalId,
+        address: dto.address ? {
+          create: dto.address,
+        } : undefined,
+        familyDetails: dto.familyDetails ? {
+          create: dto.familyDetails,
+        } : undefined,
+      },
+    });
+
+    // Remove password from response
+    const { password, ...result } = user;
+    return result;
+  }
+
+  /**
+   * Validate user credentials against database
+   */
+  async validateUser(email: string, password: string): Promise<User | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      return null;
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return null;
+    }
+
+    return user;
+  }
+
+  /**
+   * Generate access and refresh tokens
+   */
+  private generateTokens(user: User) {
+    const jwtSecret = this.configService.get('JWT_SECRET') || 'your-super-secret-jwt-key-change-this-in-production';
+
     const accessToken = this.jwtService.sign(
-      { sub: user.id, email: user.email },
-      { secret: 'ACCESS_TOKEN_SECRET', expiresIn: '15m' } // Replace with your secret
+      { sub: user.id, email: user.email, role: user.role },
+      { secret: jwtSecret, expiresIn: '15m' },
     );
 
-    // Generate Refresh Token
     const refreshToken = this.jwtService.sign(
       { sub: user.id },
-      { secret: 'REFRESH_TOKEN_SECRET', expiresIn: '7d' } // Replace with your secret
+      { secret: jwtSecret, expiresIn: '7d' },
     );
 
     return {
       accessToken,
       refreshToken,
+      expiresIn: 900, // 15 minutes in seconds
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+      },
     };
   }
 
-  async register(dto: any) {
-    // TODO: Check if user already exists
-    // const existingUser = await this.userService.findByEmail(dto.email);
-    // if (existingUser) {
-    //   throw new ConflictException('User already exists');
-    // }
+  /**
+   * Refresh access token using refresh token
+   */
+  async refreshToken(refreshToken: string) {
+    try {
+      const jwtSecret = this.configService.get('JWT_SECRET') || 'your-super-secret-jwt-key-change-this-in-production';
+      const payload = this.jwtService.verify(refreshToken, { secret: jwtSecret });
 
-    // Hash the password
-    const hashedPassword = await bcrypt.hash(dto.password, 10);
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+      });
 
-    // TODO: Create user in database
-    // const user = await this.userService.create({
-    //   ...dto,
-    //   password: hashedPassword,
-    // });
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
 
-    // For now, return a mock user (replace with actual database logic)
-    const user = {
-      id: 1,
-      email: dto.email,
-      phone: dto.phone,
-      firstName: dto.firstName,
-      lastName: dto.lastName,
-      dateOfBirth: dto.dateOfBirth,
-      maritalStatus: dto.maritalStatus,
-      nationalId: dto.nationalId,
-      address: dto.address,
-      familyDetails: dto.familyDetails,
-    };
-
-    // Remove password from response
-    const { password, ...result } = user as any;
-    return result;
-  }
-
-  async validateUser(email: string, password: string): Promise<any> {
-    // TODO: Replace with actual database lookup
-    // const user = await this.userService.findByEmail(email);
-    const mockUser = {
-      id: 1,
-      email: 'test@example.com',
-      password: await bcrypt.hash('password123', 10), // In real app, this would come from DB
-    };
-
-    const isPasswordValid = await bcrypt.compare(password, mockUser.password);
-    if (email === mockUser.email && isPasswordValid) {
-      const { password, ...result } = mockUser;
-      return result;
+      return this.generateTokens(user);
+    } catch (error) {
+      throw new UnauthorizedException('Invalid refresh token');
     }
-    return null;
+  }
+
+  /**
+   * Logout user
+   */
+  async logout(userId: string) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { lastLoginAt: new Date() },
+    });
+
+    return { message: 'Logged out successfully' };
   }
 }

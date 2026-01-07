@@ -2,116 +2,8 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-async function main() {
-  console.log('🌍 Seeding Rwanda administrative divisions...');
-
-  // Create Rwanda
-  const rwanda = await prisma.country.upsert({
-    where: { code: 'RW' },
-    update: {},
-    create: {
-      name: 'Rwanda',
-      code: 'RW',
-      currency: 'RWF',
-      phonePrefix: '+250',
-      isActive: true,
-    },
-  });
-
-  console.log(`✅ Created country: ${rwanda.name}`);
-
-  // Rwanda's 5 provinces
-  const provinces = [
-    { name: 'Kigali', code: '01' },
-    { name: 'Southern Province', code: '02' },
-    { name: 'Western Province', code: '03' },
-    { name: 'Northern Province', code: '04' },
-    { name: 'Eastern Province', code: '05' },
-  ];
-
-  for (const provinceData of provinces) {
-    const province = await prisma.province.upsert({
-      where: { 
-        countryId_name: { 
-          countryId: rwanda.id, 
-          name: provinceData.name 
-        } 
-      },
-      update: {},
-      create: {
-        name: provinceData.name,
-        code: provinceData.code,
-        countryId: rwanda.id,
-        isActive: true,
-      },
-    });
-
-    console.log(`✅ Created province: ${province.name}`);
-
-    // Seed districts for each province
-    await seedDistricts(province);
-  }
-
-  // Create platform settings
-  await prisma.platformSettings.upsert({
-    where: { id: 'platform-settings-001' },
-    update: {},
-    create: {
-      id: 'platform-settings-001',
-      platformFeePercentage: 1.0,
-      maxLoanAmount: 1000000, // 1 million RWF
-      minLoanAmount: 1000, // 1k RWF
-      lateFeePercentage: 2.0,
-      maxLateDaysBeforeDefault: 30,
-      trustScoreWeight: JSON.stringify({
-        onTimeRepayments: 40,
-        currentDebtRatio: 25,
-        loanHistoryLength: 15,
-        verificationLevel: 10,
-        socialConnections: 10
-      }),
-      minInterestRate: 1.0,
-      maxInterestRate: 20.0,
-      minLoanDurationDays: 7,
-      maxLoanDurationDays: 365,
-      requireGuarantor: false,
-      minGuarantors: 0,
-      maxGuarantors: 3,
-      updatedBy: 'system-seed',
-    },
-  });
-
-  console.log('✅ Created platform settings');
-
-  // Create a test admin user
-  const adminUser = await prisma.user.upsert({
-    where: { email: 'admin@payme.rw' },
-    update: {},
-    create: {
-      email: 'admin@payme.rw',
-      phone: '+250788123456',
-      password: '$2b$10$YourHashedPasswordHere', // You should hash this properly
-      role: 'ADMIN',
-      status: 'ACTIVE',
-      category: 'EXCELLENT',
-      trustScore: 100,
-      firstName: 'PayMe',
-      lastName: 'Admin',
-      dateOfBirth: new Date('1990-01-01'),
-      maritalStatus: 'SINGLE',
-      nationalId: '1234567890123456',
-      nationalIdVerified: true,
-      emailVerified: true,
-      phoneVerified: true,
-      twoFactorEnabled: false,
-    },
-  });
-
-  console.log(`✅ Created admin user: ${adminUser.email}`);
-
-  console.log('🎉 Seeding completed successfully!');
-}
-
+// Administrative divisions seeding skipped (already seeded)
+/*
 async function seedDistricts(province: any) {
   const districtsData: Record<string, { name: string; code: string; sectors: string[] }[]> = {
     // 'Kigali': [
@@ -239,6 +131,36 @@ async function seedCells(sector: any, cellCount: number) {
   }
 }
 
+// Administrative divisions seeding functions commented out (already seeded)
+/*
+async function seedCells(sector: any, cellCount: number) {
+  for (let i = 0; i < cellCount; i++) {
+    const cellNumber = i + 1;
+    const cellName = `Cell ${cellNumber}`;
+    const cellCode = `${sector.code}${cellNumber.toString().padStart(2, '0')}`;
+    
+    const cell = await prisma.cell.upsert({
+      where: { 
+        sectorId_name: { 
+          sectorId: sector.id, 
+          name: cellName 
+        } 
+      },
+      update: {},
+      create: {
+        name: cellName,
+        code: cellCode,
+        sectorId: sector.id,
+        isActive: true,
+      },
+    });
+
+    // Seed villages for this cell (typically 3-10 villages per cell)
+    const villageCount = 3 + Math.floor(Math.random() * 8); // 3-10 villages
+    await seedVillages(cell, villageCount);
+  }
+}
+
 async function seedVillages(cell: any, villageCount: number) {
   for (let i = 0; i < villageCount; i++) {
     const villageNumber = i + 1;
@@ -260,6 +182,400 @@ async function seedVillages(cell: any, villageCount: number) {
         isActive: true,
       },
     });
+  }
+}
+*/
+
+// ==================== SEED USERS ====================
+async function seedUsers() {
+  console.log('👥 Seeding users with full details...');
+
+  // Get Kigali location for users (using 'Kigali' province as defined in the seed)
+  const kigaliProvince = await prisma.province.findFirst({
+    where: { name: 'Kigali' },
+  });
+
+  const kigaliDistrict = kigaliProvince
+    ? await prisma.district.findFirst({
+        where: { provinceId: kigaliProvince.id },
+      })
+    : null;
+
+  const kigaliSector = kigaliDistrict
+    ? await prisma.sector.findFirst({
+        where: { districtId: kigaliDistrict.id },
+      })
+    : null;
+
+  const kigaliCell = kigaliSector
+    ? await prisma.cell.findFirst({
+        where: { sectorId: kigaliSector.id },
+      })
+    : null;
+
+  const kigaliVillage = kigaliCell
+    ? await prisma.village.findFirst({
+        where: { cellId: kigaliCell.id },
+      })
+    : null;
+
+  const rwanda2 = await prisma.country.findUnique({
+    where: { code: 'RW' },
+  });
+
+  // Admin User
+  const adminUser = await prisma.user.upsert({
+    where: { email: 'admin@paymenow.com' },
+    update: {},
+    create: {
+      email: 'admin@paymenow.com',
+      phone: '+250788123456',
+      password: '$2b$10$G0TgHjedHXmWviVoWdI7lOR9HxgDsKD5L./2OdHYGP/r5en9VLb9a', // hashed 'admin123'
+      role: 'ADMIN',
+      status: 'ACTIVE',
+      firstName: 'John',
+      lastName: 'Admin',
+      dateOfBirth: new Date('1985-01-15'),
+      maritalStatus: 'MARRIED',
+      nationalId: 'ADMIN001',
+      nationalIdVerified: true,
+      emailVerified: true,
+      phoneVerified: true,
+      trustScore: 100,
+      category: 'EXCELLENT',
+      totalBorrowed: 0,
+      totalLent: 0,
+      totalRepaid: 0,
+      currentDebt: 0,
+      walletBalance: 50000,
+      totalLoansTaken: 0,
+      totalLoansGiven: 0,
+      loansPaidOnTime: 0,
+      loansPaidLate: 0,
+      loansDefaulted: 0,
+      address: {
+        create: {
+          street: 'Kigali Main Street',
+          countryId: rwanda2?.id || 'RW',
+          provinceId: kigaliProvince?.id,
+          districtId: kigaliDistrict?.id,
+          sectorId: kigaliSector?.id,
+          cellId: kigaliCell?.id,
+          villageId: kigaliVillage?.id,
+          latitude: -1.949536,
+          longitude: 29.873888,
+        },
+      },
+      familyDetails: {
+        create: {
+          spouseName: 'Jane Admin',
+          spousePhone: '+250788654321',
+          fatherName: 'Joseph Admin',
+          motherName: 'Mary Admin',
+          emergencyContactName: 'Jane Admin',
+          emergencyContactPhone: '+250788654321',
+          emergencyContactRelation: 'Spouse',
+        },
+      },
+    },
+  });
+
+  console.log('✅ Admin user created:', adminUser.email);
+
+  // Lender User
+  const lenderUser = await prisma.user.upsert({
+    where: { email: 'lender@paymenow.com' },
+    update: {},
+    create: {
+      email: 'lender@paymenow.com',
+      phone: '+250788234567',
+      password: '$2b$10$ce0g/giiylY0m2pwp1B8POOzAGsCNe2fyuWltofXhCmFk.CsEVFS.', // hashed 'lender123'
+      role: 'USER',
+      status: 'ACTIVE',
+      firstName: 'Alice',
+      lastName: 'Lender',
+      dateOfBirth: new Date('1990-05-20'),
+      maritalStatus: 'SINGLE',
+      nationalId: 'LENDER001',
+      nationalIdVerified: true,
+      emailVerified: true,
+      phoneVerified: true,
+      trustScore: 85,
+      category: 'EXCELLENT',
+      totalBorrowed: 0,
+      totalLent: 500000,
+      totalRepaid: 0,
+      currentDebt: 0,
+      walletBalance: 250000,
+      totalLoansTaken: 0,
+      totalLoansGiven: 15,
+      loansPaidOnTime: 0,
+      loansPaidLate: 0,
+      loansDefaulted: 0,
+      address: {
+        create: {
+          street: 'Nyarutarama Street',
+          countryId: rwanda2?.id || 'RW',
+          provinceId: kigaliProvince?.id,
+          districtId: kigaliDistrict?.id,
+          sectorId: kigaliSector?.id,
+          cellId: kigaliCell?.id,
+          villageId: kigaliVillage?.id,
+          latitude: -1.945,
+          longitude: 29.879,
+        },
+      },
+      familyDetails: {
+        create: {
+          spouseName: null,
+          fatherName: 'Robert Lender',
+          motherName: 'Susan Lender',
+          emergencyContactName: 'Robert Lender',
+          emergencyContactPhone: '+250788111111',
+          emergencyContactRelation: 'Father',
+        },
+      },
+    },
+  });
+
+  console.log('✅ Lender user created:', lenderUser.email);
+
+  // Borrower 1
+  const borrower1 = await prisma.user.upsert({
+    where: { email: 'borrower1@paymenow.com' },
+    update: {},
+    create: {
+      email: 'borrower1@paymenow.com',
+      phone: '+250788345678',
+      password: '$2b$10$HEM4s12049C.D4EwTRpgiuM7QoAehCOy94IBuwbYKPCEKQ.09SpjW', // hashed 'borrower123'
+      role: 'USER',
+      status: 'ACTIVE',
+      firstName: 'Peter',
+      lastName: 'Borrower',
+      dateOfBirth: new Date('1988-03-10'),
+      maritalStatus: 'MARRIED',
+      nationalId: 'BORROW001',
+      nationalIdVerified: true,
+      emailVerified: true,
+      phoneVerified: true,
+      trustScore: 70,
+      category: 'GOOD',
+      totalBorrowed: 200000,
+      totalLent: 0,
+      totalRepaid: 180000,
+      currentDebt: 20000,
+      walletBalance: 15000,
+      totalLoansTaken: 8,
+      totalLoansGiven: 0,
+      loansPaidOnTime: 7,
+      loansPaidLate: 1,
+      loansDefaulted: 0,
+      avgRepaymentTime: 2,
+      address: {
+        create: {
+          street: 'Gacuriro Avenue',
+          countryId: rwanda2?.id || 'RW',
+          provinceId: kigaliProvince?.id,
+          districtId: kigaliDistrict?.id,
+          sectorId: kigaliSector?.id,
+          cellId: kigaliCell?.id,
+          villageId: kigaliVillage?.id,
+          latitude: -1.952,
+          longitude: 29.876,
+        },
+      },
+      familyDetails: {
+        create: {
+          spouseName: 'Maria Borrower',
+          spousePhone: '+250788222222',
+          spouseNationalId: 'BORROW001S',
+          fatherName: 'David Borrower',
+          motherName: 'Helen Borrower',
+          emergencyContactName: 'Maria Borrower',
+          emergencyContactPhone: '+250788222222',
+          emergencyContactRelation: 'Spouse',
+        },
+      },
+    },
+  });
+
+  console.log('✅ Borrower 1 created:', borrower1.email);
+
+  // Borrower 2
+  const borrower2 = await prisma.user.upsert({
+    where: { email: 'borrower2@paymenow.com' },
+    update: {},
+    create: {
+      email: 'borrower2@paymenow.com',
+      phone: '+250788456789',
+      password: '$2b$10$HEM4s12049C.D4EwTRpgiuM7QoAehCOy94IBuwbYKPCEKQ.09SpjW', // hashed 'borrower123'
+      role: 'USER',
+      status: 'ACTIVE',
+      firstName: 'Grace',
+      lastName: 'Mukamana',
+      dateOfBirth: new Date('1992-07-22'),
+      maritalStatus: 'DIVORCED',
+      nationalId: 'BORROW002',
+      nationalIdVerified: true,
+      emailVerified: true,
+      phoneVerified: true,
+      trustScore: 55,
+      category: 'TRUSTABLE',
+      totalBorrowed: 150000,
+      totalLent: 0,
+      totalRepaid: 145000,
+      currentDebt: 5000,
+      walletBalance: 8000,
+      totalLoansTaken: 5,
+      totalLoansGiven: 0,
+      loansPaidOnTime: 5,
+      loansPaidLate: 0,
+      loansDefaulted: 0,
+      avgRepaymentTime: 0,
+      address: {
+        create: {
+          street: 'Kacyiru Road',
+          countryId: rwanda2?.id || 'RW',
+          provinceId: kigaliProvince?.id,
+          districtId: kigaliDistrict?.id,
+          sectorId: kigaliSector?.id,
+          cellId: kigaliCell?.id,
+          villageId: kigaliVillage?.id,
+          latitude: -1.948,
+          longitude: 29.875,
+        },
+      },
+      familyDetails: {
+        create: {
+          spouseName: null,
+          fatherName: 'Samuel Mukamana',
+          motherName: 'Patricia Mukamana',
+          emergencyContactName: 'Samuel Mukamana',
+          emergencyContactPhone: '+250788333333',
+          emergencyContactRelation: 'Father',
+        },
+      },
+    },
+  });
+
+  console.log('✅ Borrower 2 created:', borrower2.email);
+
+  // Borrower 3 with risky history
+  const borrower3 = await prisma.user.upsert({
+    where: { email: 'borrower3@paymenow.com' },
+    update: {},
+    create: {
+      email: 'borrower3@paymenow.com',
+      phone: '+250788567890',
+      password: '$2b$10$HEM4s12049C.D4EwTRpgiuM7QoAehCOy94IBuwbYKPCEKQ.09SpjW', // hashed 'borrower123'
+      role: 'USER',
+      status: 'ACTIVE',
+      firstName: 'Martin',
+      lastName: 'Habimana',
+      dateOfBirth: new Date('1987-11-05'),
+      maritalStatus: 'MARRIED',
+      nationalId: 'BORROW003',
+      nationalIdVerified: true,
+      emailVerified: true,
+      phoneVerified: true,
+      trustScore: 30,
+      category: 'RISKY',
+      totalBorrowed: 500000,
+      totalLent: 0,
+      totalRepaid: 450000,
+      currentDebt: 50000,
+      walletBalance: 5000,
+      totalLoansTaken: 12,
+      totalLoansGiven: 0,
+      loansPaidOnTime: 9,
+      loansPaidLate: 3,
+      loansDefaulted: 0,
+      avgRepaymentTime: 8,
+      address: {
+        create: {
+          street: 'Kimihurura Street',
+          countryId: rwanda2?.id || 'RW',
+          provinceId: kigaliProvince?.id,
+          districtId: kigaliDistrict?.id,
+          sectorId: kigaliSector?.id,
+          cellId: kigaliCell?.id,
+          villageId: kigaliVillage?.id,
+          latitude: -1.944,
+          longitude: 29.882,
+        },
+      },
+      familyDetails: {
+        create: {
+          spouseName: 'Therese Habimana',
+          spousePhone: '+250788444444',
+          fatherName: 'Jean Habimana',
+          motherName: 'Beatrice Habimana',
+          emergencyContactName: 'Therese Habimana',
+          emergencyContactPhone: '+250788444444',
+          emergencyContactRelation: 'Spouse',
+        },
+      },
+    },
+  });
+
+  console.log('✅ Borrower 3 created:', borrower3.email);
+
+  console.log('\n✅ All users seeded successfully!');
+}
+
+async function main() {
+  try {
+    // Create Rwanda country if it doesn't exist
+    await prisma.country.upsert({
+      where: { code: 'RW' },
+      update: {},
+      create: {
+        name: 'Rwanda',
+        code: 'RW',
+        currency: 'RWF',
+        phonePrefix: '+250',
+        isActive: true,
+      },
+    });
+
+    // Create platform settings if it doesn't exist
+    await prisma.platformSettings.upsert({
+      where: { id: 'platform-settings-001' },
+      update: {},
+      create: {
+        id: 'platform-settings-001',
+        platformFeePercentage: 1.0,
+        maxLoanAmount: 1000000,
+        minLoanAmount: 1000,
+        lateFeePercentage: 2.0,
+        maxLateDaysBeforeDefault: 30,
+        trustScoreWeight: JSON.stringify({
+          onTimeRepayments: 40,
+          currentDebtRatio: 25,
+          loanHistoryLength: 15,
+          verificationLevel: 10,
+          socialConnections: 10
+        }),
+        minInterestRate: 1.0,
+        maxInterestRate: 20.0,
+        minLoanDurationDays: 7,
+        maxLoanDurationDays: 365,
+        requireGuarantor: false,
+        minGuarantors: 0,
+        maxGuarantors: 3,
+        updatedBy: 'system-seed',
+      },
+    });
+
+    console.log('✅ Created platform settings');
+
+    // Seed users
+    await seedUsers();
+  } catch (e) {
+    console.error('❌ Seeding failed:', e);
+    process.exit(1);
+  } finally {
+    await prisma.$disconnect();
   }
 }
 
