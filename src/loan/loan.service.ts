@@ -574,6 +574,7 @@ export class LoanService {
   private calculateScoreChange(status: LoanStatus, lateDays: number): number {
     switch (status) {
       case 'REPAID':
+        if (lateDays < 0) return 15;   // Early repayment (before due date)
         if (lateDays === 0) return 10; // On-time repayment
         if (lateDays <= 3) return 5;   // Slightly late
         if (lateDays <= 7) return 2;   // Moderately late
