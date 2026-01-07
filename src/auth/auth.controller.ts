@@ -1,16 +1,18 @@
-import { Controller, Post, Body } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Controller, Post, Body, Get, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { AuthGuard } from '@nestjs/passport';
 
-@ApiTags('auth') // Swagger tag for grouping
+@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
   @ApiOperation({ summary: 'Login a user' })
+  @ApiBody({ type: LoginDto })
   @ApiResponse({
     status: 200,
     description: 'User successfully logged in',
@@ -27,6 +29,7 @@ export class AuthController {
 
   @Post('register')
   @ApiOperation({ summary: 'Register a new user' })
+  @ApiBody({ type: RegisterDto })
   @ApiResponse({
     status: 201,
     description: 'User successfully registered',
@@ -55,5 +58,14 @@ export class AuthController {
   })
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
+  }
+
+  @Get('profile')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  @ApiOperation({ summary: 'Get user profile' })
+  @ApiResponse({ status: 200, description: 'User profile data' })
+  getProfile() {
+    // Your logic here
   }
 }
