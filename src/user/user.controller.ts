@@ -40,14 +40,14 @@ export class UserController {
 	}
 
 	@Get()
-	@ApiOperation({ summary: 'Get all users' })
-	@ApiResponse({ status: 200, type: [UserResponseDto] })
+	@ApiOperation({ summary: 'Get all users with full details (for lender review)' })
+	@ApiResponse({ status: 200, type: [FullUserResponseDto] })
 	async findAll() {
 		return this.userService.findAll();
 	}
 
 	@Get(':id')
-	@ApiOperation({ summary: 'Get user by ID' })
+	@ApiOperation({ summary: 'Get user by ID with full details (for lender review)' })
 	@ApiParam({ name: 'id', example: 'user-id-123' })
 	@ApiResponse({ status: 200, type: FullUserResponseDto })
 	async findOne(@Param('id') id: string) {

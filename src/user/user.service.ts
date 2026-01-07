@@ -44,11 +44,151 @@ export class UserService {
   }
 
   async findAll(): Promise<User[]> {
-    return this.prisma.user.findMany({ where: { isDeleted: false } });
+    return this.prisma.user.findMany({
+      where: { isDeleted: false },
+      include: {
+        address: {
+          select: {
+            street: true,
+            latitude: true,
+            longitude: true,
+            country: { select: { id: true, name: true, code: true } },
+            province: { select: { id: true, name: true } },
+            district: { select: { id: true, name: true } },
+            sector: { select: { id: true, name: true } },
+            cell: { select: { id: true, name: true } },
+            village: { select: { id: true, name: true } },
+          },
+        },
+        familyDetails: true,
+        verificationDocuments: true,
+        trustScoreHistory: {
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+        },
+        loansAsBorrower: {
+          orderBy: { createdAt: 'desc' },
+          take: 3,
+          select: {
+            id: true,
+            loanNumber: true,
+            amount: true,
+            totalAmount: true,
+            status: true,
+            dueDate: true,
+            createdAt: true,
+          },
+        },
+        loansAsLender: {
+          orderBy: { createdAt: 'desc' },
+          take: 3,
+          select: {
+            id: true,
+            loanNumber: true,
+            amount: true,
+            totalAmount: true,
+            status: true,
+            dueDate: true,
+            createdAt: true,
+          },
+        },
+        loanRequests: {
+          orderBy: { createdAt: 'desc' },
+          take: 3,
+          select: {
+            id: true,
+            amount: true,
+            interestRate: true,
+            durationDays: true,
+            status: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
   }
 
   async findOne(id: string): Promise<User | null> {
-    return this.prisma.user.findUnique({ where: { id } });
+    return this.prisma.user.findUnique({
+      where: { id },
+      include: {
+        address: {
+          select: {
+            street: true,
+            latitude: true,
+            longitude: true,
+            country: { select: { id: true, name: true, code: true } },
+            province: { select: { id: true, name: true } },
+            district: { select: { id: true, name: true } },
+            sector: { select: { id: true, name: true } },
+            cell: { select: { id: true, name: true } },
+            village: { select: { id: true, name: true } },
+          },
+        },
+        familyDetails: true,
+        verificationDocuments: true,
+        trustScoreHistory: {
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+        },
+        loansAsBorrower: {
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+          select: {
+            id: true,
+            loanNumber: true,
+            amount: true,
+            totalAmount: true,
+            status: true,
+            dueDate: true,
+            createdAt: true,
+            lender: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                trustScore: true,
+                category: true,
+              },
+            },
+          },
+        },
+        loansAsLender: {
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+          select: {
+            id: true,
+            loanNumber: true,
+            amount: true,
+            totalAmount: true,
+            status: true,
+            dueDate: true,
+            createdAt: true,
+            borrower: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                trustScore: true,
+                category: true,
+              },
+            },
+          },
+        },
+        loanRequests: {
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+          select: {
+            id: true,
+            amount: true,
+            interestRate: true,
+            durationDays: true,
+            status: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
   }
 
   async updateUser(id: string, dto: UpdateUserDto): Promise<User> {
