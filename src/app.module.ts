@@ -8,9 +8,19 @@ import { LoanOfferModule } from './loan-offer/loan-offer.module';
 import { AuthModule } from './auth/auth.module';
 import { TrustScoreHistoryModule } from './trust-score-history/trust-score-history.module';
 import { NotificationModule } from './notification/notification.module';
+import { SchedulerModule } from './scheduler/scheduler.module';
 
 @Module({
-  imports: [UserModule, LoanModule, LoanRequestModule, LoanOfferModule, AuthModule, TrustScoreHistoryModule, NotificationModule],
+  imports: [
+    UserModule,
+    LoanModule,
+    LoanRequestModule,
+    LoanOfferModule,
+    AuthModule,
+    TrustScoreHistoryModule,
+    NotificationModule,
+    SchedulerModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
