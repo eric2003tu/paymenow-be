@@ -1,9 +1,10 @@
-import { Controller, Post, Body, Get, Param, Patch, Delete, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
+import { Controller, Post, Body, Get, Param, Patch, Delete, HttpCode, HttpStatus, UseGuards, Req } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 import { LoanRequestService } from './loan-request.service';
 import { CreateLoanRequestDto } from './dto/create-loan-request.dto';
 import { UpdateLoanRequestDto } from './dto/update-loan-request.dto';
 import { LoanRequestResponseDto } from './dto/loan-request-response.dto';
+import { AuthGuard } from '@nestjs/passport';
 
 // Placeholder AdminGuard for demonstration
 class AdminGuard {
@@ -31,6 +32,15 @@ export class LoanRequestController {
   @ApiResponse({ status: 200, type: [LoanRequestResponseDto] })
   async findAll() {
     return this.loanRequestService.findAll();
+  }
+
+  @Get('me')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Get my loan requests (authenticated user)' })
+  @ApiResponse({ status: 200, type: [LoanRequestResponseDto] })
+  async getMyLoanRequests(@Req() req: any) {
+    return this.loanRequestService.findByBorrowerWithDetails(req.user.sub);
   }
 
   @Get('user/:userId')

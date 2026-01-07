@@ -28,6 +28,14 @@ export class LoanOfferController {
     return this.service.findAll();
   }
 
+  @Get('me')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiOperation({ summary: 'Get my loan offers (authenticated user)' })
+  @ApiResponse({ status: 200, type: [LoanOfferResponseDto] })
+  async getMyLoanOffers(@Req() req: any) {
+    return this.service.findByLenderWithDetails(req.user.sub);
+  }
+
   @Get('user/:userId')
   @ApiOperation({ summary: 'List loan offers made by a user' })
   async findByUser(@Param('userId') userId: string) {

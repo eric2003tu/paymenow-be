@@ -34,6 +34,90 @@ export class LoanOfferService {
     });
   }
 
+  async findByLenderWithDetails(userId: string) {
+    return this.prisma.loanOffer.findMany({
+      where: { lenderId: userId, isDeleted: false },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        loanRequest: {
+          include: {
+            borrower: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true,
+                dateOfBirth: true,
+                maritalStatus: true,
+                nationalId: true,
+                profilePicture: true,
+                trustScore: true,
+                category: true,
+                address: {
+                  select: {
+                    street: true,
+                    latitude: true,
+                    longitude: true,
+                    country: {
+                      select: {
+                        id: true,
+                        name: true,
+                        code: true,
+                      },
+                    },
+                    province: {
+                      select: {
+                        id: true,
+                        name: true,
+                      },
+                    },
+                    district: {
+                      select: {
+                        id: true,
+                        name: true,
+                      },
+                    },
+                    sector: {
+                      select: {
+                        id: true,
+                        name: true,
+                      },
+                    },
+                    cell: {
+                      select: {
+                        id: true,
+                        name: true,
+                      },
+                    },
+                    village: {
+                      select: {
+                        id: true,
+                        name: true,
+                      },
+                    },
+                  },
+                },
+                familyDetails: {
+                  select: {
+                    spouseName: true,
+                    spouseNationalId: true,
+                    spousePhone: true,
+                    fatherName: true,
+                    motherName: true,
+                    emergencyContactName: true,
+                    emergencyContactPhone: true,
+                    emergencyContactRelation: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
   async findOne(id: string) {
     const offer = await this.prisma.loanOffer.findUnique({ where: { id } });
     if (!offer || offer.isDeleted) throw new NotFoundException('Loan offer not found');

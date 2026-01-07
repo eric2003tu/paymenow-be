@@ -1,5 +1,5 @@
 import { Controller, Post, Body, Get, Param, Patch, Delete, HttpCode, HttpStatus, UseGuards, Req } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 import { LoanService } from './loan.service';
 import { CreateLoanDto } from './dto/create-loan.dto';
 import { UpdateLoanDto } from './dto/update-loan.dto';
@@ -43,6 +43,24 @@ export class LoanController {
   @ApiResponse({ status: 200, type: [LoanResponseDto] })
   async findAll() {
     return this.loanService.findAll();
+  }
+
+  @Get('me/borrowed')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Get my borrowed loans (authenticated user)' })
+  @ApiResponse({ status: 200, type: [LoanResponseDto] })
+  async getMyBorrowedLoans(@Req() req: any) {
+    return this.loanService.findByBorrowerWithDetails(req.user.sub);
+  }
+
+  @Get('me/lent')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Get my lent loans (authenticated user)' })
+  @ApiResponse({ status: 200, type: [LoanResponseDto] })
+  async getMyLentLoans(@Req() req: any) {
+    return this.loanService.findByLenderWithDetails(req.user.sub);
   }
 
   @Get('user/:userId/borrowed')
