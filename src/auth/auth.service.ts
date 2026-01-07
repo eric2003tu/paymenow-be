@@ -55,6 +55,16 @@ export class AuthService {
       throw new ConflictException('Phone number already registered');
     }
 
+    // Validate verification documents: require at least one identity doc (NATIONAL_ID or PASSPORT)
+    const docs = dto.verificationDocuments || [];
+    if (!Array.isArray(docs) || docs.length < 1) {
+      throw new BadRequestException('At least one verification document is required at registration.');
+    }
+    const hasIdentityDoc = docs.some((d: any) => d?.documentType === 'NATIONAL_ID' || d?.documentType === 'PASSPORT');
+    if (!hasIdentityDoc) {
+      throw new BadRequestException('Registration must include NATIONAL_ID or PASSPORT for identity verification.');
+    }
+
     // Hash the password
     const hashedPassword = await bcrypt.hash(dto.password, 10);
 
@@ -79,15 +89,13 @@ export class AuthService {
               create: dto.familyDetails,
             }
           : undefined,
-        verificationDocuments: dto.verificationDocuments?.length
-          ? {
-              create: dto.verificationDocuments.map((doc: any) => ({
-                documentType: doc.documentType,
-                documentUrl: doc.documentUrl,
-                status: 'PENDING',
-              })),
-            }
-          : undefined,
+        verificationDocuments: {
+          create: dto.verificationDocuments.map((doc: any) => ({
+            documentType: doc.documentType,
+            documentUrl: doc.documentUrl,
+            status: 'PENDING',
+          })),
+        },
       },
     });
 

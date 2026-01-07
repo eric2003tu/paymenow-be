@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 import { NotificationService } from '../notification/notification.service';
 import { CreateLoanOfferDto } from './dto/create-loan-offer.dto';
@@ -12,6 +12,14 @@ export class LoanOfferService {
   ) {}
 
   async create(dto: CreateLoanOfferDto, actingUserId: string) {
+    // Check if lender has verified documents
+    const verifiedDoc = await this.prisma.verificationDocument.findFirst({
+      where: { userId: actingUserId, status: 'VERIFIED' },
+    });
+    if (!verifiedDoc) {
+      throw new BadRequestException('Your documents must be verified by admin before you can make loan offers. Please submit verification documents during registration or contact admin.');
+    }
+
     // Force lenderId to the authenticated user
     const { status, ...rest } = dto;
     const offer = await this.prisma.loanOffer.create({

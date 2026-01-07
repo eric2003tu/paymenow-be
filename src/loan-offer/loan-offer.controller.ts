@@ -15,8 +15,9 @@ export class LoanOfferController {
 
   @Post()
   @UseGuards(AuthGuard('jwt'))
-  @ApiOperation({ summary: 'Create a loan offer (authenticated user becomes lender)' })
+  @ApiOperation({ summary: 'Create a loan offer (authenticated user becomes lender). User must have verified documents.' })
   @ApiResponse({ status: 201, type: LoanOfferResponseDto })
+  @ApiResponse({ status: 400, description: 'User documents not verified' })
   async create(@Body() dto: CreateLoanOfferDto, @Req() req: any) {
     return this.service.create(dto, req.user.sub);
   }

@@ -10,6 +10,14 @@ export class LoanRequestService {
 
   async createLoanRequest(dto: CreateLoanRequestDto, borrowerId: string): Promise<LoanRequest | any> {
     try {
+      // Check if borrower has verified documents
+      const verifiedDoc = await this.prisma.verificationDocument.findFirst({
+        where: { userId: borrowerId, status: 'VERIFIED' },
+      });
+      if (!verifiedDoc) {
+        throw new BadRequestException('Your documents must be verified by admin before you can request a loan. Please submit verification documents during registration or contact admin.');
+      }
+
       return await this.prisma.loanRequest.create({
         data: {
           borrowerId,

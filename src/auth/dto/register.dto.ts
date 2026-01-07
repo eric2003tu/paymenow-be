@@ -1,4 +1,4 @@
-import { IsEmail, IsString, IsNotEmpty, Length, Matches, IsDateString, ValidateNested, IsOptional, IsArray, IsEnum, IsUrl } from 'class-validator';
+import { IsEmail, IsString, IsNotEmpty, Length, Matches, IsDateString, ValidateNested, IsArray, IsEnum, IsUrl, ArrayMinSize, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
 import { AddressDto } from '../../user/dto/address.dto';
 import { FamilyDetailsDto } from '../../user/dto/family-details.dto';
@@ -69,9 +69,9 @@ export class RegisterDto {
   @Type(() => FamilyDetailsDto)
   familyDetails?: FamilyDetailsDto;
 
-  @ApiPropertyOptional({ type: [VerificationDocumentDto], description: 'Optional verification documents to submit at registration (admin will review)' })
-  @IsOptional()
+  @ApiProperty({ type: [VerificationDocumentDto], description: 'Verification documents to submit at registration (must include at least one NATIONAL_ID or PASSPORT). Admin will review.' })
   @IsArray()
+  @ArrayMinSize(1)
   @ValidateNested({ each: true })
   @Type(() => VerificationDocumentDto)
   verificationDocuments?: VerificationDocumentDto[];

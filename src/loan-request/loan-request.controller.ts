@@ -22,9 +22,10 @@ export class LoanRequestController {
   @Post()
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: 'Create a new loan request (authenticated user becomes borrower)' })
+  @ApiOperation({ summary: 'Create a new loan request (authenticated user becomes borrower). User must have verified documents.' })
   @ApiBody({ type: CreateLoanRequestDto })
   @ApiResponse({ status: 201, type: LoanRequestResponseDto })
+  @ApiResponse({ status: 400, description: 'User documents not verified' })
   async create(@Body() dto: CreateLoanRequestDto, @Req() req: any) {
     return this.loanRequestService.createLoanRequest(dto, req.user.sub);
   }
