@@ -1,5 +1,5 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
-import type { Prisma, Loan, LoanStatus, UserCategory } from '@prisma/client';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import type { Prisma, Loan, LoanStatus, UserCategory, DocumentType } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { TrustScoreHistoryService } from '../trust-score-history/trust-score-history.service';
 import { CreateLoanDto } from './dto/create-loan.dto';
@@ -34,8 +34,160 @@ export class LoanService {
     }
   }
 
+  /**
+   * Accept a loan offer: borrower confirms and a loan is created from the selected offer + request
+   */
+  async createFromOffer(offerId: string, actingBorrowerId: string, documents: Array<{ documentType: string; documentUrl: string }>): Promise<Loan> {
+    return this.prisma.$transaction(async (tx) => {
+      const toNumber = (v: any) => (v && typeof v === 'object' && typeof v.toNumber === 'function' ? v.toNumber() : Number(v));
+
+      const offer = await tx.loanOffer.findUnique({
+        where: { id: offerId },
+        include: { loanRequest: true },
+      });
+
+      if (!offer || offer.isDeleted) {
+        throw new NotFoundException('Loan offer not found');
+      }
+
+      if (offer.status !== 'PENDING') {
+        throw new BadRequestException('Only pending offers can be accepted');
+      }
+
+      const request = offer.loanRequest;
+      if (!request || request.isDeleted) {
+        throw new NotFoundException('Related loan request not found');
+      }
+
+      if (request.borrowerId !== actingBorrowerId) {
+        throw new ForbiddenException('You can only accept offers for your own loan requests');
+      }
+
+      if (['FUNDED', 'CANCELLED', 'EXPIRED'].includes(request.status)) {
+        throw new BadRequestException('This loan request is no longer open for funding');
+      }
+
+      const amount: number = toNumber(offer.amount);
+      const interestRate: number = toNumber(offer.interestRate ?? request.interestRate ?? 6.0);
+      const durationDays = request.durationDays;
+      const purpose = request.purpose;
+
+      const totalAmount: number = amount + amount * (interestRate / 100);
+
+      const loan = await tx.loan.create({
+        data: {
+          borrowerId: request.borrowerId,
+          lenderId: offer.lenderId,
+          amount,
+          interestRate,
+          durationDays,
+          purpose,
+          disbursedAt: null,
+          dueDate: null,
+          repaidAt: null,
+          totalAmount,
+          amountPaid: 0,
+          amountDue: totalAmount,
+          status: 'PENDING',
+          isLate: false,
+          lateDays: 0,
+          penaltyAmount: 0,
+          agreementUrl: null,
+          signedByBorrower: true,
+          signedByLender: false,
+        },
+      });
+
+      // Update offer status to ACCEPTED
+      await tx.loanOffer.update({
+        where: { id: offer.id },
+        data: { status: 'ACCEPTED' },
+      });
+
+      // Update request funding tallies and status
+      const newAmountFunded: number = toNumber(request.amountFunded ?? 0) + amount;
+      const amountNeeded: number = Math.max(0, toNumber(request.amount) - newAmountFunded);
+      await tx.loanRequest.update({
+        where: { id: request.id },
+        data: {
+          amountFunded: newAmountFunded,
+          amountNeeded,
+          status: amountNeeded <= 0 ? 'FUNDED' : 'PARTIAL',
+        },
+      });
+
+      if (documents && documents.length > 0) {
+        await tx.verificationDocument.createMany({
+          data: documents.map((doc) => ({
+            userId: actingBorrowerId,
+            documentType: doc.documentType as any,
+            documentUrl: doc.documentUrl,
+            status: 'PENDING',
+          })),
+        });
+      }
+
+      return loan;
+    });
+  }
+
   async findAll(): Promise<Loan[] | any[]> {
     return this.prisma.loan.findMany({ where: { isDeleted: false } });
+  }
+
+  async findByBorrower(userId: string): Promise<Loan[] | any[]> {
+    return this.prisma.loan.findMany({
+      where: { borrowerId: userId, isDeleted: false },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async findByLender(userId: string): Promise<Loan[] | any[]> {
+    return this.prisma.loan.findMany({
+      where: { lenderId: userId, isDeleted: false },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /**
+   * Lender signs the loan, activating it and setting disbursement/due dates
+   */
+  async signLoanByLender(loanId: string, actingLenderId: string): Promise<Loan> {
+    const loan = await this.prisma.loan.findUnique({ where: { id: loanId } });
+
+    if (!loan || loan.isDeleted) {
+      throw new NotFoundException('Loan not found');
+    }
+
+    if (loan.lenderId !== actingLenderId) {
+      throw new ForbiddenException('You can only sign loans where you are the lender');
+    }
+
+    if (loan.status !== 'PENDING') {
+      throw new BadRequestException('Only pending loans can be signed');
+    }
+
+    if (!loan.signedByBorrower) {
+      throw new BadRequestException('Borrower must sign first');
+    }
+
+    if (loan.signedByLender) {
+      throw new BadRequestException('Loan is already signed by lender');
+    }
+
+    const now = new Date();
+    const dueDate = new Date(now);
+    dueDate.setDate(dueDate.getDate() + loan.durationDays);
+
+    return this.prisma.loan.update({
+      where: { id: loanId },
+      data: {
+        signedByLender: true,
+        status: 'ACTIVE',
+        disbursedAt: now,
+        dueDate,
+      },
+    });
   }
 
   async findOne(id: string): Promise<Loan | any | null> {

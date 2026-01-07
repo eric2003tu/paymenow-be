@@ -116,14 +116,144 @@ export class AuthController {
   @Get('profile')
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: 'Get current user profile' })
-  @ApiResponse({ status: 200, description: 'User profile data' })
+  @ApiOperation({ summary: 'Get current user profile with all details' })
+  @ApiResponse({
+    status: 200,
+    description: 'Complete user profile data including address, family, trust score history, loans and offers',
+    schema: {
+      example: {
+        id: 'user-id-123',
+        email: 'grace@example.com',
+        phone: '+250788456789',
+        firstName: 'Grace',
+        lastName: 'Mukamana',
+        dateOfBirth: '1992-07-22T00:00:00Z',
+        maritalStatus: 'DIVORCED',
+        nationalId: 'BORROW002',
+        nationalIdVerified: true,
+        role: 'USER',
+        status: 'ACTIVE',
+        category: 'TRUSTABLE',
+        trustScore: 55,
+        totalBorrowed: 150000,
+        totalLent: 0,
+        totalRepaid: 145000,
+        currentDebt: 5000,
+        walletBalance: 8000,
+        totalLoansTaken: 5,
+        totalLoansGiven: 0,
+        loansPaidOnTime: 5,
+        loansPaidLate: 0,
+        loansDefaulted: 0,
+        emailVerified: true,
+        phoneVerified: true,
+        twoFactorEnabled: false,
+        address: {
+          id: 'addr-123',
+          street: 'Kacyiru Road',
+          countryId: 'RW',
+          latitude: -1.948,
+          longitude: 29.875,
+        },
+        familyDetails: {
+          id: 'fam-123',
+          fatherName: 'Samuel Mukamana',
+          motherName: 'Patricia Mukamana',
+          emergencyContactName: 'Samuel Mukamana',
+          emergencyContactPhone: '+250788333333',
+          emergencyContactRelation: 'Father',
+        },
+        trustScoreHistory: [
+          {
+            id: 'tsh-1',
+            oldScore: 50,
+            newScore: 55,
+            change: 5,
+            reason: 'LOAN_REPAID_ON_TIME',
+            createdAt: '2026-01-06T10:00:00Z',
+            loan: {
+              id: 'loan-123',
+              loanNumber: 'LN-2026-0001',
+              amount: 50000,
+              status: 'REPAID',
+            },
+          },
+        ],
+        loansAsBorrower: [
+          {
+            id: 'loan-123',
+            loanNumber: 'LN-2026-0001',
+            amount: 50000,
+            totalAmount: 53000,
+            amountPaid: 53000,
+            amountDue: 0,
+            status: 'REPAID',
+            isLate: false,
+            lateDays: 0,
+            dueDate: '2026-01-05T00:00:00Z',
+            createdAt: '2025-12-05T00:00:00Z',
+          },
+        ],
+        loansAsLender: [
+          {
+            id: 'loan-456',
+            loanNumber: 'LN-2026-0002',
+            amount: 75000,
+            totalAmount: 79500,
+            amountPaid: 20000,
+            amountDue: 59500,
+            status: 'ACTIVE',
+            isLate: false,
+            lateDays: 0,
+            dueDate: '2026-02-10T00:00:00Z',
+            createdAt: '2025-12-15T00:00:00Z',
+            borrower: {
+              id: 'user-222',
+              firstName: 'Alex',
+              lastName: 'Niyonzima',
+            },
+          },
+        ],
+        loanRequests: [
+          {
+            id: 'lr-123',
+            loanNumber: 'LR-2026-0001',
+            amount: 100000,
+            amountFunded: 25000,
+            amountNeeded: 75000,
+            status: 'OPEN',
+            expiresAt: '2026-01-14T00:00:00Z',
+            createdAt: '2026-01-07T00:00:00Z',
+          },
+        ],
+        loanOffers: [
+          {
+            id: 'lo-123',
+            amount: 25000,
+            interestRate: 6.5,
+            status: 'PENDING',
+            createdAt: '2026-01-07T00:00:00Z',
+            loanRequest: {
+              id: 'lr-123',
+              loanNumber: 'LR-2026-0001',
+              amount: 100000,
+              status: 'OPEN',
+              borrower: {
+                id: 'user-321',
+                firstName: 'Bella',
+                lastName: 'Uwase',
+              },
+            },
+          },
+        ],
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-07T00:00:00Z',
+        lastLoginAt: '2026-01-07T06:58:21Z',
+      },
+    },
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getProfile(@Req() req: any) {
-    // The user is available in req.user from JWT guard
-    return {
-      message: 'User profile',
-      user: req.user,
-    };
+    return this.authService.getProfile(req.user.sub);
   }
 }

@@ -33,6 +33,14 @@ export class LoanRequestController {
     return this.loanRequestService.findAll();
   }
 
+  @Get('user/:userId')
+  @ApiOperation({ summary: 'Get loan requests created by a user' })
+  @ApiParam({ name: 'userId', example: 'user-id-123' })
+  @ApiResponse({ status: 200, type: [LoanRequestResponseDto] })
+  async findByUser(@Param('userId') userId: string) {
+    return this.loanRequestService.findByBorrower(userId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get loan request by ID' })
   @ApiParam({ name: 'id', example: 'loan-request-id-123' })

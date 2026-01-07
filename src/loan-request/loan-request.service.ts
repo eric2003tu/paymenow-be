@@ -36,6 +36,16 @@ export class LoanRequestService {
     return this.prisma.loanRequest.findMany({ where: { isDeleted: false } });
   }
 
+  async findByBorrower(userId: string): Promise<LoanRequest[] | any[]> {
+    return this.prisma.loanRequest.findMany({
+      where: { borrowerId: userId, isDeleted: false },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        loanOffers: true,
+      },
+    });
+  }
+
   async findOne(id: string): Promise<LoanRequest | any | null> {
     return this.prisma.loanRequest.findUnique({ where: { id } });
   }

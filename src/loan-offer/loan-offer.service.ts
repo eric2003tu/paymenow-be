@@ -7,12 +7,13 @@ import { UpdateLoanOfferDto } from './dto/update-loan-offer.dto';
 export class LoanOfferService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(dto: CreateLoanOfferDto) {
-    // Map status to enum if present
+  async create(dto: CreateLoanOfferDto, actingUserId: string) {
+    // Force lenderId to the authenticated user
     const { status, ...rest } = dto;
     return this.prisma.loanOffer.create({
       data: {
         ...rest,
+        lenderId: actingUserId,
         status: status as any, // Should be LoanOfferStatus enum, cast for now
         interestRate: dto.interestRate ?? 6.0,
       },
@@ -23,17 +24,26 @@ export class LoanOfferService {
     return this.prisma.loanOffer.findMany({ where: { isDeleted: false } });
   }
 
+  async findByLender(userId: string) {
+    return this.prisma.loanOffer.findMany({
+      where: { lenderId: userId, isDeleted: false },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        loanRequest: true,
+      },
+    });
+  }
+
   async findOne(id: string) {
     const offer = await this.prisma.loanOffer.findUnique({ where: { id } });
     if (!offer || offer.isDeleted) throw new NotFoundException('Loan offer not found');
     return offer;
   }
 
-  async update(id: string, dto: UpdateLoanOfferDto, isAdmin = false) {
+  async update(id: string, dto: UpdateLoanOfferDto, actingUserId: string) {
     const offer = await this.prisma.loanOffer.findUnique({ where: { id } });
     if (!offer || offer.isDeleted) throw new NotFoundException('Loan offer not found');
-    if (!isAdmin) throw new ForbiddenException('Only admin can update loan offers');
-    // Map status to enum if present
+    if (offer.lenderId !== actingUserId) throw new ForbiddenException('You can only update your own loan offers');
     const { status, ...rest } = dto;
     return this.prisma.loanOffer.update({
       where: { id },
@@ -44,10 +54,10 @@ export class LoanOfferService {
     });
   }
 
-  async remove(id: string, isAdmin = false) {
+  async remove(id: string, actingUserId: string) {
     const offer = await this.prisma.loanOffer.findUnique({ where: { id } });
     if (!offer || offer.isDeleted) throw new NotFoundException('Loan offer not found');
-    if (!isAdmin) throw new ForbiddenException('Only admin can delete loan offers');
+    if (offer.lenderId !== actingUserId) throw new ForbiddenException('You can only delete your own loan offers');
     return this.prisma.loanOffer.update({ where: { id }, data: { isDeleted: true } });
   }
 }

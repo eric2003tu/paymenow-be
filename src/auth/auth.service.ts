@@ -166,4 +166,262 @@ export class AuthService {
 
     return { message: 'Logged out successfully' };
   }
+
+  /**
+   * Get complete user profile with all related information
+   */
+  async getProfile(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        address: true,
+        familyDetails: true,
+        trustScoreHistory: {
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+          select: {
+            id: true,
+            oldScore: true,
+            newScore: true,
+            change: true,
+            reason: true,
+            metadata: true,
+            createdAt: true,
+            loan: {
+              select: {
+                id: true,
+                loanNumber: true,
+                amount: true,
+                status: true,
+              },
+            },
+          },
+        },
+        loansAsBorrower: {
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+          select: {
+            id: true,
+            loanNumber: true,
+            amount: true,
+            totalAmount: true,
+            amountPaid: true,
+            amountDue: true,
+            status: true,
+            isLate: true,
+            lateDays: true,
+            dueDate: true,
+            createdAt: true,
+          },
+        },
+        loansAsLender: {
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+          select: {
+            id: true,
+            loanNumber: true,
+            amount: true,
+            totalAmount: true,
+            amountPaid: true,
+            amountDue: true,
+            status: true,
+            isLate: true,
+            lateDays: true,
+            dueDate: true,
+            createdAt: true,
+            borrower: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        },
+        loanRequests: {
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+          select: {
+            id: true,
+            loanNumber: true,
+            amount: true,
+            amountFunded: true,
+            amountNeeded: true,
+            status: true,
+            expiresAt: true,
+            createdAt: true,
+            loanOffers: {
+              orderBy: { createdAt: 'desc' },
+              select: {
+                id: true,
+                amount: true,
+                interestRate: true,
+                status: true,
+                createdAt: true,
+                lender: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        loanOffers: {
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+          select: {
+            id: true,
+            amount: true,
+            interestRate: true,
+            status: true,
+            createdAt: true,
+            loanRequest: {
+              select: {
+                id: true,
+                loanNumber: true,
+                amount: true,
+                status: true,
+                borrower: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                    phone: true,
+                    dateOfBirth: true,
+                    maritalStatus: true,
+                    nationalId: true,
+                    profilePicture: true,
+                    trustScore: true,
+                    category: true,
+                    address: {
+                      select: {
+                        street: true,
+                        latitude: true,
+                        longitude: true,
+                        country: {
+                          select: {
+                            id: true,
+                            name: true,
+                            code: true,
+                          },
+                        },
+                        province: {
+                          select: {
+                            id: true,
+                            name: true,
+                          },
+                        },
+                        district: {
+                          select: {
+                            id: true,
+                            name: true,
+                          },
+                        },
+                        sector: {
+                          select: {
+                            id: true,
+                            name: true,
+                          },
+                        },
+                        cell: {
+                          select: {
+                            id: true,
+                            name: true,
+                          },
+                        },
+                        village: {
+                          select: {
+                            id: true,
+                            name: true,
+                          },
+                        },
+                      },
+                    },
+                    familyDetails: {
+                      select: {
+                        spouseName: true,
+                        spouseNationalId: true,
+                        spousePhone: true,
+                        fatherName: true,
+                        motherName: true,
+                        emergencyContactName: true,
+                        emergencyContactPhone: true,
+                        emergencyContactRelation: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Normalize Decimal values to numbers for a clean JSON response
+    const toNumber = (value: any) =>
+      value && typeof value === 'object' && typeof value.toNumber === 'function'
+        ? value.toNumber()
+        : value;
+
+    const mapLoan = (loan: any) => ({
+      ...loan,
+      amount: toNumber(loan.amount),
+      totalAmount: toNumber(loan.totalAmount),
+      amountPaid: toNumber(loan.amountPaid),
+      amountDue: toNumber(loan.amountDue),
+    });
+
+    const mapLoanRequest = (lr: any) => ({
+      ...lr,
+      amount: toNumber(lr.amount),
+      amountFunded: toNumber(lr.amountFunded),
+      amountNeeded: toNumber(lr.amountNeeded),
+      loanOffers: lr.loanOffers?.map((lo: any) => ({
+        ...lo,
+        amount: toNumber(lo.amount),
+      })),
+    });
+
+    const { password, ...userWithoutPassword } = user;
+
+    return {
+      ...userWithoutPassword,
+      totalBorrowed: toNumber(userWithoutPassword.totalBorrowed),
+      totalLent: toNumber(userWithoutPassword.totalLent),
+      totalRepaid: toNumber(userWithoutPassword.totalRepaid),
+      currentDebt: toNumber(userWithoutPassword.currentDebt),
+      walletBalance: toNumber(userWithoutPassword.walletBalance),
+      loansAsBorrower: userWithoutPassword.loansAsBorrower?.map(mapLoan),
+      loansAsLender: userWithoutPassword.loansAsLender?.map(mapLoan),
+      loanRequests: userWithoutPassword.loanRequests?.map(mapLoanRequest),
+      loanOffers: userWithoutPassword.loanOffers?.map((lo: any) => ({
+        ...lo,
+        amount: toNumber(lo.amount),
+        loanRequest: lo.loanRequest
+          ? {
+              ...lo.loanRequest,
+              amount: toNumber(lo.loanRequest.amount),
+            }
+          : undefined,
+      })),
+      trustScoreHistory: userWithoutPassword.trustScoreHistory?.map((h: any) => ({
+        ...h,
+        loan: h.loan
+          ? {
+              ...h.loan,
+              amount: toNumber(h.loan.amount),
+            }
+          : undefined,
+      })),
+    };
+  }
 }

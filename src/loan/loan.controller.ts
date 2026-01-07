@@ -1,9 +1,11 @@
-import { Controller, Post, Body, Get, Param, Patch, Delete, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Patch, Delete, HttpCode, HttpStatus, UseGuards, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
 import { LoanService } from './loan.service';
 import { CreateLoanDto } from './dto/create-loan.dto';
 import { UpdateLoanDto } from './dto/update-loan.dto';
 import { LoanResponseDto } from './dto/loan-response.dto';
+import { AuthGuard } from '@nestjs/passport';
+import { AcceptOfferDto } from './dto/accept-offer.dto';
 
 // Placeholder AdminGuard for demonstration
 class AdminGuard {
@@ -26,11 +28,46 @@ export class LoanController {
     return this.loanService.createLoan(dto);
   }
 
+  @Post('accept-offer/:offerId')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiOperation({ summary: 'Borrower accepts a loan offer and creates the loan (amount comes from offer, borrower is the caller)' })
+  @ApiParam({ name: 'offerId', example: 'loan-offer-id-123' })
+  @ApiBody({ type: AcceptOfferDto })
+  @ApiResponse({ status: 201, type: LoanResponseDto })
+  async acceptOffer(@Param('offerId') offerId: string, @Body() body: AcceptOfferDto, @Req() req: any) {
+    return this.loanService.createFromOffer(offerId, req.user.sub, body.documents || []);
+  }
+
   @Get()
   @ApiOperation({ summary: 'Get all loans' })
   @ApiResponse({ status: 200, type: [LoanResponseDto] })
   async findAll() {
     return this.loanService.findAll();
+  }
+
+  @Get('user/:userId/borrowed')
+  @ApiOperation({ summary: 'Get loans borrowed by a user' })
+  @ApiParam({ name: 'userId', example: 'user-id-123' })
+  @ApiResponse({ status: 200, type: [LoanResponseDto] })
+  async findBorrowedByUser(@Param('userId') userId: string) {
+    return this.loanService.findByBorrower(userId);
+  }
+
+  @Get('user/:userId/lent')
+  @ApiOperation({ summary: 'Get loans lent by a user' })
+  @ApiParam({ name: 'userId', example: 'user-id-123' })
+  @ApiResponse({ status: 200, type: [LoanResponseDto] })
+  async findLentByUser(@Param('userId') userId: string) {
+    return this.loanService.findByLender(userId);
+  }
+
+  @Patch(':id/sign-by-lender')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiOperation({ summary: 'Lender signs the loan, activating it and setting disbursement date' })
+  @ApiParam({ name: 'id', example: 'loan-id-123' })
+  @ApiResponse({ status: 200, type: LoanResponseDto })
+  async signByLender(@Param('id') id: string, @Req() req: any) {
+    return this.loanService.signLoanByLender(id, req.user.sub);
   }
 
   @Get(':id')
