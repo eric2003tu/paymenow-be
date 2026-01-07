@@ -235,4 +235,30 @@ export class NotificationService {
       { lenderName, amount },
     );
   }
+
+  /**
+   * Notify lender that borrower claims to have paid
+   */
+  async notifyLenderPaymentClaimed(lenderId: string, borrowerName: string, amount: number, loanId: string): Promise<Notification> {
+    return this.createNotification(
+      lenderId,
+      'REPAYMENT_RECEIVED',
+      'Payment Confirmation Required',
+      `${borrowerName} claims to have paid ${amount} RWF. Please confirm if you received the payment.`,
+      { borrowerName, amount, loanId },
+    );
+  }
+
+  /**
+   * Notify borrower that payment was confirmed and loan is complete
+   */
+  async notifyBorrowerPaymentConfirmedComplete(borrowerId: string, lenderName: string, amount: number): Promise<Notification> {
+    return this.createNotification(
+      borrowerId,
+      'REPAYMENT_RECEIVED',
+      'Payment Confirmed - Loan Complete',
+      `${lenderName} confirmed receipt of ${amount} RWF. Your loan has been marked as REPAID. Thank you!`,
+      { lenderName, amount },
+    );
+  }
 }

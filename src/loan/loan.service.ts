@@ -410,6 +410,135 @@ export class LoanService {
     return updatedLoan;
   }
 
+  /**
+   * Borrower marks loan as paid - sends notification to lender for confirmation
+   */
+  async markPaidByBorrower(loanId: string, actingBorrowerId: string): Promise<Loan> {
+    const loan = await this.prisma.loan.findUnique({ where: { id: loanId } });
+
+    if (!loan || loan.isDeleted) {
+      throw new NotFoundException('Loan not found');
+    }
+
+    if (loan.borrowerId !== actingBorrowerId) {
+      throw new ForbiddenException('Only the borrower can mark this loan as paid');
+    }
+
+    if (loan.status !== 'ACTIVE' && loan.status !== 'OVERDUE') {
+      throw new BadRequestException('Only active or overdue loans can be marked as paid');
+    }
+
+    if (loan.repaidAt) {
+      throw new BadRequestException('Loan is already marked as repaid');
+    }
+
+    // Update loan to indicate borrower claims payment
+    const updatedLoan = await this.prisma.loan.update({
+      where: { id: loanId },
+      data: {
+        status: 'PENDING', // Pending lender confirmation
+        amountPaid: loan.totalAmount, // Borrower claims full payment
+      },
+    });
+
+    // Notify lender to confirm receipt
+    const borrower = await this.prisma.user.findUnique({
+      where: { id: actingBorrowerId },
+      select: { firstName: true, lastName: true },
+    });
+    const lender = await this.prisma.user.findUnique({
+      where: { id: loan.lenderId },
+      select: { firstName: true, lastName: true },
+    });
+
+    if (borrower && lender) {
+      const borrowerName = `${borrower.firstName} ${borrower.lastName}`;
+      await this.notificationService.notifyLenderPaymentClaimed(
+        loan.lenderId,
+        borrowerName,
+        Number(loan.totalAmount),
+        loanId,
+      );
+    }
+
+    return updatedLoan;
+  }
+
+  /**
+   * Lender confirms payment received - marks loan as REPAID and updates trust scores
+   */
+  async confirmPaymentByLender(loanId: string, actingLenderId: string): Promise<Loan> {
+    const loan = await this.prisma.loan.findUnique({ where: { id: loanId } });
+
+    if (!loan || loan.isDeleted) {
+      throw new NotFoundException('Loan not found');
+    }
+
+    if (loan.lenderId !== actingLenderId) {
+      throw new ForbiddenException('Only the lender can confirm payment for this loan');
+    }
+
+    if (loan.status !== 'PENDING') {
+      throw new BadRequestException('Loan is not pending confirmation');
+    }
+
+    if (loan.repaidAt) {
+      throw new BadRequestException('Loan is already repaid');
+    }
+
+    const now = new Date();
+    const lateDays = loan.dueDate
+      ? Math.max(0, Math.floor((now.getTime() - loan.dueDate.getTime()) / (1000 * 60 * 60 * 24)))
+      : 0;
+
+    // Mark loan as repaid
+    const updatedLoan = await this.prisma.loan.update({
+      where: { id: loanId },
+      data: {
+        status: 'REPAID',
+        repaidAt: now,
+        amountDue: 0,
+        isLate: lateDays > 0,
+        lateDays,
+      },
+    });
+
+    // Update borrower's trust score
+    await this.updateUserTrustScore(
+      loan.borrowerId,
+      loanId,
+      'REPAID',
+      lateDays,
+      {
+        loanAmount: Number(loan.amount),
+        totalAmount: Number(loan.totalAmount),
+        repaidAt: now,
+        wasLate: lateDays > 0,
+      },
+    );
+
+    // Notify borrower that payment is confirmed
+    const borrower = await this.prisma.user.findUnique({
+      where: { id: loan.borrowerId },
+      select: { firstName: true, lastName: true },
+    });
+    const lender = await this.prisma.user.findUnique({
+      where: { id: actingLenderId },
+      select: { firstName: true, lastName: true },
+    });
+
+    if (borrower && lender) {
+      const lenderName = `${lender.firstName} ${lender.lastName}`;
+      await this.notificationService.notifyBorrowerPaymentConfirmedComplete(
+        loan.borrowerId,
+        lenderName,
+        Number(loan.totalAmount),
+      );
+    }
+
+    return updatedLoan;
+  }
+
   async findOne(id: string): Promise<Loan | any | null> {
     return this.prisma.loan.findUnique({ where: { id } });
   }

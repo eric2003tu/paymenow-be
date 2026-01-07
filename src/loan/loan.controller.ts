@@ -88,6 +88,26 @@ export class LoanController {
     return this.loanService.signLoanByLender(id, req.user.sub);
   }
 
+  @Patch(':id/mark-paid-by-borrower')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Borrower marks loan as paid (notifies lender for confirmation)' })
+  @ApiParam({ name: 'id', example: 'loan-id-123' })
+  @ApiResponse({ status: 200, type: LoanResponseDto })
+  async markPaidByBorrower(@Param('id') id: string, @Req() req: any) {
+    return this.loanService.markPaidByBorrower(id, req.user.sub);
+  }
+
+  @Patch(':id/confirm-payment-by-lender')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Lender confirms payment received and marks loan as REPAID' })
+  @ApiParam({ name: 'id', example: 'loan-id-123' })
+  @ApiResponse({ status: 200, type: LoanResponseDto })
+  async confirmPaymentByLender(@Param('id') id: string, @Req() req: any) {
+    return this.loanService.confirmPaymentByLender(id, req.user.sub);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get loan by ID' })
   @ApiParam({ name: 'id', example: 'loan-id-123' })
