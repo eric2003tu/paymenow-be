@@ -67,6 +67,59 @@ export class UserProfileResponseDto {
     lateDays: number;
     dueDate?: Date;
     createdAt: Date;
+    lender: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+      phone: string;
+      dateOfBirth: Date;
+      maritalStatus: string;
+      nationalId: string;
+      profilePicture?: string;
+      trustScore: number;
+      category: string;
+      address?: {
+        street?: string;
+        latitude?: number;
+        longitude?: number;
+        country: {
+          id: string;
+          name: string;
+          code: string;
+        };
+        province?: {
+          id: string;
+          name: string;
+        };
+        district?: {
+          id: string;
+          name: string;
+        };
+        sector?: {
+          id: string;
+          name: string;
+        };
+        cell?: {
+          id: string;
+          name: string;
+        };
+        village?: {
+          id: string;
+          name: string;
+        };
+      };
+      familyDetails?: {
+        spouseName?: string;
+        spouseNationalId?: string;
+        spousePhone?: string;
+        fatherName?: string;
+        motherName?: string;
+        emergencyContactName?: string;
+        emergencyContactPhone?: string;
+        emergencyContactRelation?: string;
+      };
+    };
   }>;
   
   loansAsLender?: Array<{
@@ -85,6 +138,54 @@ export class UserProfileResponseDto {
       id: string;
       firstName: string;
       lastName: string;
+      email: string;
+      phone: string;
+      dateOfBirth: Date;
+      maritalStatus: string;
+      nationalId: string;
+      profilePicture?: string;
+      trustScore: number;
+      category: string;
+      address?: {
+        street?: string;
+        latitude?: number;
+        longitude?: number;
+        country: {
+          id: string;
+          name: string;
+          code: string;
+        };
+        province?: {
+          id: string;
+          name: string;
+        };
+        district?: {
+          id: string;
+          name: string;
+        };
+        sector?: {
+          id: string;
+          name: string;
+        };
+        cell?: {
+          id: string;
+          name: string;
+        };
+        village?: {
+          id: string;
+          name: string;
+        };
+      };
+      familyDetails?: {
+        spouseName?: string;
+        spouseNationalId?: string;
+        spousePhone?: string;
+        fatherName?: string;
+        motherName?: string;
+        emergencyContactName?: string;
+        emergencyContactPhone?: string;
+        emergencyContactRelation?: string;
+      };
     };
   }>;
   
@@ -107,6 +208,54 @@ export class UserProfileResponseDto {
         id: string;
         firstName: string;
         lastName: string;
+        email: string;
+        phone: string;
+        dateOfBirth: Date;
+        maritalStatus: string;
+        nationalId: string;
+        profilePicture?: string;
+        trustScore: number;
+        category: string;
+        address?: {
+          street?: string;
+          latitude?: number;
+          longitude?: number;
+          country: {
+            id: string;
+            name: string;
+            code: string;
+          };
+          province?: {
+            id: string;
+            name: string;
+          };
+          district?: {
+            id: string;
+            name: string;
+          };
+          sector?: {
+            id: string;
+            name: string;
+          };
+          cell?: {
+            id: string;
+            name: string;
+          };
+          village?: {
+            id: string;
+            name: string;
+          };
+        };
+        familyDetails?: {
+          spouseName?: string;
+          spouseNationalId?: string;
+          spousePhone?: string;
+          fatherName?: string;
+          motherName?: string;
+          emergencyContactName?: string;
+          emergencyContactPhone?: string;
+          emergencyContactRelation?: string;
+        };
       };
     }>;
   }>;
