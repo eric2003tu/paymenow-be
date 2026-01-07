@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsEnum, IsNotEmpty, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsEnum, IsNotEmpty, IsString, ValidateNested, IsUrl } from 'class-validator';
 import { Type } from 'class-transformer';
 import { DocumentType } from '@prisma/client';
 
@@ -9,8 +9,7 @@ class OfferDocumentDto {
   documentType: DocumentType;
 
   @ApiProperty({ example: 'https://cdn.example.com/docs/123/national-id.jpg' })
-  @IsString()
-  @IsNotEmpty()
+  @IsUrl()
   documentUrl: string;
 }
 

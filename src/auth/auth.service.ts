@@ -69,12 +69,25 @@ export class AuthService {
         dateOfBirth: new Date(dto.dateOfBirth),
         maritalStatus: dto.maritalStatus,
         nationalId: dto.nationalId,
-        address: dto.address ? {
-          create: dto.address,
-        } : undefined,
-        familyDetails: dto.familyDetails ? {
-          create: dto.familyDetails,
-        } : undefined,
+        address: dto.address
+          ? {
+              create: dto.address,
+            }
+          : undefined,
+        familyDetails: dto.familyDetails
+          ? {
+              create: dto.familyDetails,
+            }
+          : undefined,
+        verificationDocuments: dto.verificationDocuments?.length
+          ? {
+              create: dto.verificationDocuments.map((doc: any) => ({
+                documentType: doc.documentType,
+                documentUrl: doc.documentUrl,
+                status: 'PENDING',
+              })),
+            }
+          : undefined,
       },
     });
 

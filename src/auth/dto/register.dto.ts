@@ -1,8 +1,19 @@
-import { IsEmail, IsString, IsNotEmpty, Length, Matches, IsDateString, ValidateNested, IsOptional } from 'class-validator';
+import { IsEmail, IsString, IsNotEmpty, Length, Matches, IsDateString, ValidateNested, IsOptional, IsArray, IsEnum, IsUrl } from 'class-validator';
 import { Type } from 'class-transformer';
 import { AddressDto } from '../../user/dto/address.dto';
 import { FamilyDetailsDto } from '../../user/dto/family-details.dto';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { DocumentType } from '@prisma/client';
+
+class VerificationDocumentDto {
+  @ApiProperty({ example: 'NATIONAL_ID', enum: DocumentType })
+  @IsEnum(DocumentType)
+  documentType: DocumentType;
+
+  @ApiProperty({ example: 'https://cdn.example.com/docs/nid.png' })
+  @IsUrl()
+  documentUrl: string;
+}
 
 export class RegisterDto {
   @ApiProperty({ example: 'example@example.com', description: 'User email address' })
@@ -57,4 +68,11 @@ export class RegisterDto {
   @ValidateNested()
   @Type(() => FamilyDetailsDto)
   familyDetails?: FamilyDetailsDto;
+
+  @ApiPropertyOptional({ type: [VerificationDocumentDto], description: 'Optional verification documents to submit at registration (admin will review)' })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => VerificationDocumentDto)
+  verificationDocuments?: VerificationDocumentDto[];
 }

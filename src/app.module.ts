@@ -9,6 +9,7 @@ import { AuthModule } from './auth/auth.module';
 import { TrustScoreHistoryModule } from './trust-score-history/trust-score-history.module';
 import { NotificationModule } from './notification/notification.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
+import { VerificationDocumentModule } from './verification-document/verification-document.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { SchedulerModule } from './scheduler/scheduler.module';
     TrustScoreHistoryModule,
     NotificationModule,
     SchedulerModule,
+    VerificationDocumentModule,
   ],
   controllers: [AppController],
   providers: [AppService],
