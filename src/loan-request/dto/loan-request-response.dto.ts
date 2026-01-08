@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { FullUserResponseDto } from '../../user/dto/full-user-response.dto';
 
 export class LoanRequestResponseDto {
   @ApiProperty({ example: 'loan-request-id-123' })
@@ -33,4 +34,7 @@ export class LoanRequestResponseDto {
   updatedAt: string;
   @ApiProperty({ example: '2026-01-13T12:00:00.000Z' })
   expiresAt?: string;
+
+  @ApiProperty({ type: FullUserResponseDto, required: false })
+  borrower?: FullUserResponseDto;
 }

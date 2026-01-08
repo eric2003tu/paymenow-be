@@ -8,6 +8,45 @@ import { UpdateLoanRequestDto } from './dto/update-loan-request.dto';
 export class LoanRequestService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private borrowerSelect = {
+    id: true,
+    firstName: true,
+    lastName: true,
+    email: true,
+    phone: true,
+    dateOfBirth: true,
+    maritalStatus: true,
+    nationalId: true,
+    profilePicture: true,
+    trustScore: true,
+    category: true,
+    address: {
+      select: {
+        street: true,
+        latitude: true,
+        longitude: true,
+        country: { select: { id: true, name: true, code: true } },
+        province: { select: { id: true, name: true } },
+        district: { select: { id: true, name: true } },
+        sector: { select: { id: true, name: true } },
+        cell: { select: { id: true, name: true } },
+        village: { select: { id: true, name: true } },
+      },
+    },
+    familyDetails: {
+      select: {
+        spouseName: true,
+        spouseNationalId: true,
+        spousePhone: true,
+        fatherName: true,
+        motherName: true,
+        emergencyContactName: true,
+        emergencyContactPhone: true,
+        emergencyContactRelation: true,
+      },
+    },
+  };
+
   async createLoanRequest(dto: CreateLoanRequestDto, borrowerId: string): Promise<LoanRequest | any> {
     try {
       // Check if borrower has verified documents
@@ -41,7 +80,13 @@ export class LoanRequestService {
   }
 
   async findAll(): Promise<LoanRequest[] | any[]> {
-    return this.prisma.loanRequest.findMany({ where: { isDeleted: false } });
+    return this.prisma.loanRequest.findMany({
+      where: { isDeleted: false },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        borrower: { select: this.borrowerSelect },
+      },
+    });
   }
 
   async findByBorrower(userId: string): Promise<LoanRequest[] | any[]> {
@@ -50,6 +95,7 @@ export class LoanRequestService {
       orderBy: { createdAt: 'desc' },
       include: {
         loanOffers: true,
+        borrower: { select: this.borrowerSelect },
       },
     });
   }
@@ -59,6 +105,7 @@ export class LoanRequestService {
       where: { borrowerId: userId, isDeleted: false },
       orderBy: { createdAt: 'desc' },
       include: {
+        borrower: { select: this.borrowerSelect },
         loanOffers: {
           orderBy: { createdAt: 'desc' },
           include: {
@@ -140,7 +187,12 @@ export class LoanRequestService {
   }
 
   async findOne(id: string): Promise<LoanRequest | any | null> {
-    return this.prisma.loanRequest.findUnique({ where: { id } });
+    return this.prisma.loanRequest.findUnique({
+      where: { id },
+      include: {
+        borrower: { select: this.borrowerSelect },
+      },
+    });
   }
 
   async updateLoanRequest(id: string, dto: UpdateLoanRequestDto): Promise<LoanRequest | any> {

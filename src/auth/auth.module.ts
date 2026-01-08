@@ -19,7 +19,7 @@ import { UserModule } from '../user/user.module';
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get('JWT_SECRET') || 'your-super-secret-jwt-key-change-this-in-production',
-        signOptions: { expiresIn: '15m' },
+        signOptions: { expiresIn: '2h' },
       }),
     }),
   ],
