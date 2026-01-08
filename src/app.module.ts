@@ -10,6 +10,7 @@ import { TrustScoreHistoryModule } from './trust-score-history/trust-score-histo
 import { NotificationModule } from './notification/notification.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { VerificationDocumentModule } from './verification-document/verification-document.module';
+import { AddressModule } from './address/address.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { VerificationDocumentModule } from './verification-document/verification
     NotificationModule,
     SchedulerModule,
     VerificationDocumentModule,
+    AddressModule,
   ],
   controllers: [AppController],
   providers: [AppService],
