@@ -21,7 +21,7 @@ export class AuthController {
       example: {
         accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
         refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-        expiresIn: 7200,
+        expiresIn: '2h',
         user: {
           id: 'user-id-123',
           email: 'john@example.com',
@@ -86,7 +86,7 @@ export class AuthController {
       example: {
         accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
         refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-        expiresIn: 7200,
+        expiresIn: '2h',
         user: {
           id: 'user-id-123',
           email: 'john@example.com',

@@ -143,7 +143,7 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
-      expiresIn: 7200, // 2 hours in seconds
+      expiresIn: '2h',
       user: {
         id: user.id,
         email: user.email,

@@ -8,7 +8,10 @@ async function bootstrap() {
 
   // Enable CORS for localhost:3000 - localhost:3020
   app.enableCors({
-    origin: Array.from({ length: 21 }, (_, i) => `http://localhost:${3000 + i}`),
+    origin: [
+      ...Array.from({ length: 21 }, (_, i) => `http://localhost:${3000 + i}`),
+      'https://payme-fe.vercel.app',
+    ],
     credentials: true,
   });
 
