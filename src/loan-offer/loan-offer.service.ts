@@ -51,15 +51,27 @@ export class LoanOfferService {
   };
 
   async create(dto: CreateLoanOfferDto, actingUserId: string) {
-    // Check if lender has verified documents
-    const verifiedDoc = await this.prisma.verificationDocument.findFirst({
-      where: { userId: actingUserId, status: 'VERIFIED' },
+    // Check if user is verified (status = 'ACTIVE')
+    const user = await this.prisma.user.findUnique({
+      where: { id: actingUserId },
+      select: { status: true },
     });
-    if (!verifiedDoc) {
-      throw new BadRequestException('Your documents must be verified by admin before you can make loan offers. Please submit verification documents during registration or contact admin.');
+    if (!user || user.status !== 'ACTIVE') {
+      throw new BadRequestException('Your account must be verified by admin before you can make loan offers.');
     }
 
-    // Force lenderId to the authenticated user
+    // Prevent duplicate offers for the same loanRequestId and lenderId
+    const existingOffer = await this.prisma.loanOffer.findFirst({
+      where: {
+        loanRequestId: dto.loanRequestId,
+        lenderId: actingUserId,
+        isDeleted: false,
+      },
+    });
+    if (existingOffer) {
+      throw new BadRequestException('You have already made an offer for this loan request.');
+    }
+
     const { status, ...rest } = dto;
     const offer = await this.prisma.loanOffer.create({
       data: {

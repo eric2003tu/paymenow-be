@@ -39,10 +39,12 @@ export class UserController {
 		return user;
 	}
 
-	@Get()
-	@ApiOperation({ summary: 'Get all users with full details (for lender review)' })
+
+	@Get('admin/all')
+	@UseGuards(AdminGuard)
+	@ApiOperation({ summary: 'Admin: Get all users with full details' })
 	@ApiResponse({ status: 200, type: [FullUserResponseDto] })
-	async findAll() {
+	async adminFindAll() {
 		return this.userService.findAll();
 	}
 
