@@ -14,6 +14,45 @@ export class LoanService {
     private readonly notificationService: NotificationService,
   ) {}
 
+  private userSelect = {
+    id: true,
+    firstName: true,
+    lastName: true,
+    email: true,
+    phone: true,
+    dateOfBirth: true,
+    maritalStatus: true,
+    nationalId: true,
+    profilePicture: true,
+    trustScore: true,
+    category: true,
+    address: {
+      select: {
+        street: true,
+        latitude: true,
+        longitude: true,
+        country: { select: { id: true, name: true, code: true } },
+        province: { select: { id: true, name: true } },
+        district: { select: { id: true, name: true } },
+        sector: { select: { id: true, name: true } },
+        cell: { select: { id: true, name: true } },
+        village: { select: { id: true, name: true } },
+      },
+    },
+    familyDetails: {
+      select: {
+        spouseName: true,
+        spouseNationalId: true,
+        spousePhone: true,
+        fatherName: true,
+        motherName: true,
+        emergencyContactName: true,
+        emergencyContactPhone: true,
+        emergencyContactRelation: true,
+      },
+    },
+  } as const;
+
   async createLoan(dto: CreateLoanDto): Promise<Loan | any> {
     try {
       // Filter out undefined for required fields and cast status to enum
@@ -540,7 +579,13 @@ export class LoanService {
   }
 
   async findOne(id: string): Promise<Loan | any | null> {
-    return this.prisma.loan.findUnique({ where: { id } });
+    return this.prisma.loan.findUnique({
+      where: { id },
+      include: {
+        borrower: { select: this.userSelect },
+        lender: { select: this.userSelect },
+      },
+    });
   }
 
   async updateLoan(id: string, dto: UpdateLoanDto): Promise<Loan | any> {
