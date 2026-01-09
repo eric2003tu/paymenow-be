@@ -205,6 +205,26 @@ export class LoanOfferService {
     });
   }
 
+  async findOffersOnBorrowerRequests(userId: string) {
+    return this.prisma.loanOffer.findMany({
+      where: {
+        isDeleted: false,
+        loanRequest: { borrowerId: userId },
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        loanRequest: {
+          include: {
+            borrower: { select: this.borrowerSelect },
+          },
+        },
+        lender: {
+          select: this.borrowerSelect, // reuse same select for lender profile details
+        },
+      },
+    });
+  }
+
   async findOne(id: string) {
     const offer = await this.prisma.loanOffer.findUnique({
       where: { id },

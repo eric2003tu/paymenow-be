@@ -37,6 +37,14 @@ export class LoanOfferController {
     return this.service.findByLenderWithDetails(req.user.sub);
   }
 
+  @Get('my-requests')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiOperation({ summary: 'Get offers received on my loan requests (authenticated borrower)' })
+  @ApiResponse({ status: 200, type: [LoanOfferResponseDto] })
+  async getOffersOnMyRequests(@Req() req: any) {
+    return this.service.findOffersOnBorrowerRequests(req.user.sub);
+  }
+
   @Get('user/:userId')
   @ApiOperation({ summary: 'List loan offers made by a user' })
   async findByUser(@Param('userId') userId: string) {

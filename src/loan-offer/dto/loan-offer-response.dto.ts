@@ -25,4 +25,7 @@ export class LoanOfferResponseDto {
 
   @ApiProperty({ type: FullUserResponseDto, required: false })
   borrower?: FullUserResponseDto;
+
+  @ApiProperty({ type: FullUserResponseDto, required: false })
+  lender?: FullUserResponseDto;
 }
