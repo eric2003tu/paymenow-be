@@ -475,7 +475,7 @@ export class LoanService {
     const updatedLoan = await this.prisma.loan.update({
       where: { id: loanId },
       data: {
-        status: 'PENDING', // Pending lender confirmation
+        status: 'PAYMENT_INITIATED' as LoanStatus, // Payment initiated by borrower, pending lender confirmation
         amountPaid: loan.totalAmount, // Borrower claims full payment
       },
     });

@@ -4,13 +4,450 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")  // ADD THIS LINE!
+  url      = env("DATABASE_URL")
 }
 
-// ==================== ENUMS ====================
-// [KEEP ALL YOUR ENUMS HERE AS THEY ARE]
+model User {
+  id                    String                 @id @default(cuid())
+  email                 String                 @unique
+  phone                 String                 @unique
+  password              String
+  role                  UserRole               @default(USER)
+  status                UserStatus             @default(PENDING)
+  category              UserCategory           @default(MODERATE)
+  trustScore            Int                    @default(50)
+  firstName             String
+  lastName              String
+  dateOfBirth           DateTime
+  maritalStatus         MaritalStatus
+  nationalId            String                 @unique
+  nationalIdVerified    Boolean                @default(false)
+  profilePicture        String?
+  emailVerified         Boolean                @default(false)
+  phoneVerified         Boolean                @default(false)
+  twoFactorEnabled      Boolean                @default(false)
+  totalBorrowed         Decimal                @default(0) @db.Decimal(15, 2)
+  totalLent             Decimal                @default(0) @db.Decimal(15, 2)
+  totalRepaid           Decimal                @default(0) @db.Decimal(15, 2)
+  currentDebt           Decimal                @default(0) @db.Decimal(15, 2)
+  walletBalance         Decimal                @default(0) @db.Decimal(15, 2)
+  totalLoansTaken       Int                    @default(0)
+  totalLoansGiven       Int                    @default(0)
+  loansPaidOnTime       Int                    @default(0)
+  loansPaidLate         Int                    @default(0)
+  loansDefaulted        Int                    @default(0)
+  avgRepaymentTime      Int?
+  isDeleted             Boolean                @default(false)
+  deletedAt             DateTime?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  lastLoginAt           DateTime?
+  address               Address?
+  familyDetails         FamilyDetails?
+  loansAsBorrower       Loan[]                 @relation("BorrowerLoans")
+  loansAsLender         Loan[]                 @relation("LenderLoans")
+  guarantorLoans        LoanGuarantor[]
+  loanOffers            LoanOffer[]            @relation("LoanOfferLender")
+  loanRequests          LoanRequest[]
+  notifications         Notification[]
+  receivedTransactions  Transaction[]          @relation("ReceivedTransactions")
+  sentTransactions      Transaction[]          @relation("SentTransactions")
+  trustScoreHistory     TrustScoreHistory[]
+  verificationDocuments VerificationDocument[]
 
-// ==================== ENUMS ====================
+  @@index([category])
+  @@index([trustScore])
+  @@index([currentDebt])
+  @@index([isDeleted])
+}
+
+model Country {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  code        String     @unique
+  currency    String
+  phonePrefix String
+  isActive    Boolean    @default(true)
+  isDeleted   Boolean    @default(false)
+  addresses   Address[]
+  provinces   Province[]
+
+  @@index([name])
+  @@index([isActive])
+}
+
+model Province {
+  id        String     @id @default(cuid())
+  name      String
+  code      String?
+  countryId String
+  isActive  Boolean    @default(true)
+  isDeleted Boolean    @default(false)
+  addresses Address[]
+  districts District[]
+  country   Country    @relation(fields: [countryId], references: [id], onDelete: Cascade)
+
+  @@unique([countryId, name])
+  @@index([name])
+  @@index([isActive])
+}
+
+model District {
+  id         String    @id @default(cuid())
+  name       String
+  code       String?
+  provinceId String
+  isActive   Boolean   @default(true)
+  isDeleted  Boolean   @default(false)
+  addresses  Address[]
+  province   Province  @relation(fields: [provinceId], references: [id], onDelete: Cascade)
+  sectors    Sector[]
+
+  @@unique([provinceId, name])
+  @@index([name])
+  @@index([isActive])
+}
+
+model Sector {
+  id         String    @id @default(cuid())
+  name       String
+  code       String?
+  districtId String
+  isActive   Boolean   @default(true)
+  isDeleted  Boolean   @default(false)
+  addresses  Address[]
+  cells      Cell[]
+  district   District  @relation(fields: [districtId], references: [id], onDelete: Cascade)
+
+  @@unique([districtId, name])
+  @@index([name])
+  @@index([isActive])
+}
+
+model Cell {
+  id        String    @id @default(cuid())
+  name      String
+  code      String?
+  sectorId  String
+  isActive  Boolean   @default(true)
+  isDeleted Boolean   @default(false)
+  addresses Address[]
+  sector    Sector    @relation(fields: [sectorId], references: [id], onDelete: Cascade)
+  villages  Village[]
+
+  @@unique([sectorId, name])
+  @@index([name])
+  @@index([isActive])
+}
+
+model Village {
+  id        String    @id @default(cuid())
+  name      String
+  code      String?
+  cellId    String
+  isActive  Boolean   @default(true)
+  isDeleted Boolean   @default(false)
+  addresses Address[]
+  cell      Cell      @relation(fields: [cellId], references: [id], onDelete: Cascade)
+
+  @@unique([cellId, name])
+  @@index([name])
+  @@index([isActive])
+}
+
+model Address {
+  id         String    @id @default(cuid())
+  userId     String    @unique
+  street     String?
+  countryId  String
+  provinceId String?
+  districtId String?
+  sectorId   String?
+  cellId     String?
+  villageId  String?
+  latitude   Float?
+  longitude  Float?
+  isDeleted  Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  cell       Cell?     @relation(fields: [cellId], references: [id])
+  country    Country   @relation(fields: [countryId], references: [id])
+  district   District? @relation(fields: [districtId], references: [id])
+  province   Province? @relation(fields: [provinceId], references: [id])
+  sector     Sector?   @relation(fields: [sectorId], references: [id])
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  village    Village?  @relation(fields: [villageId], references: [id])
+}
+
+model FamilyDetails {
+  id                       String   @id @default(cuid())
+  userId                   String   @unique
+  spouseName               String?
+  spouseNationalId         String?
+  spousePhone              String?
+  fatherName               String?
+  fatherNationalId         String?
+  fatherPhone              String?
+  motherName               String?
+  motherNationalId         String?
+  motherPhone              String?
+  emergencyContactName     String?
+  emergencyContactPhone    String?
+  emergencyContactRelation String?
+  updatedAt                DateTime @updatedAt
+  user                     User     @relation(fields: [userId], references: [id])
+}
+
+model VerificationDocument {
+  id              String             @id @default(cuid())
+  userId          String
+  documentType    DocumentType
+  documentUrl     String
+  status          VerificationStatus @default(PENDING)
+  verifiedBy      String?
+  verifiedAt      DateTime?
+  rejectionReason String?
+  isDeleted       Boolean            @default(false)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([isDeleted])
+}
+
+model Loan {
+  id                  String              @id @default(cuid())
+  loanNumber          String              @unique @default(uuid())
+  borrowerId          String
+  lenderId            String
+  amount              Decimal             @db.Decimal(15, 2)
+  interestRate        Decimal             @default(6.0) @db.Decimal(5, 2)
+  durationDays        Int
+  purpose             String?
+  disbursedAt         DateTime?
+  dueDate             DateTime?
+  repaidAt            DateTime?
+  totalAmount         Decimal             @db.Decimal(15, 2)
+  amountPaid          Decimal             @default(0) @db.Decimal(15, 2)
+  amountDue           Decimal             @db.Decimal(15, 2)
+  status              LoanStatus          @default(PENDING)
+  isLate              Boolean             @default(false)
+  lateDays            Int                 @default(0)
+  penaltyAmount       Decimal             @default(0) @db.Decimal(15, 2)
+  agreementUrl        String?
+  signedByBorrower    Boolean             @default(false)
+  signedByLender      Boolean             @default(false)
+  isDeleted           Boolean             @default(false)
+  deletedAt           DateTime?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  borrower            User                @relation("BorrowerLoans", fields: [borrowerId], references: [id])
+  lender              User                @relation("LenderLoans", fields: [lenderId], references: [id])
+  guarantors          LoanGuarantor[]
+  repayments          Repayment[]
+  transactions        Transaction[]
+  trustScoreHistories TrustScoreHistory[]
+
+  @@index([borrowerId, status])
+  @@index([lenderId, status])
+  @@index([dueDate])
+  @@index([status])
+  @@index([isDeleted])
+}
+
+model LoanRequest {
+  id              String            @id @default(cuid())
+  borrowerId      String
+  loanNumber      String            @unique @default(uuid())
+  amount          Decimal           @db.Decimal(15, 2)
+  minAmount       Decimal?          @db.Decimal(15, 2)
+  interestRate    Decimal           @default(6.0) @db.Decimal(5, 2)
+  durationDays    Int
+  purpose         String?
+  amountFunded    Decimal           @default(0) @db.Decimal(15, 2)
+  amountNeeded    Decimal           @db.Decimal(15, 2)
+  status          LoanRequestStatus @default(OPEN)
+  fundingDeadline DateTime?
+  isPublic        Boolean           @default(true)
+  maxLenders      Int               @default(1)
+  isDeleted       Boolean           @default(false)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  expiresAt       DateTime?
+  loanOffers      LoanOffer[]
+  borrower        User              @relation(fields: [borrowerId], references: [id], onDelete: Cascade)
+
+  @@index([borrowerId])
+  @@index([status, isPublic])
+  @@index([expiresAt])
+  @@index([isDeleted])
+}
+
+model LoanOffer {
+  id             String          @id @default(cuid())
+  loanRequestId  String
+  lenderId       String
+  amount         Decimal         @db.Decimal(15, 2)
+  interestRate   Decimal         @db.Decimal(5, 2)
+  status         LoanOfferStatus @default(PENDING)
+  isCounterOffer Boolean         @default(false)
+  message        String?
+  isDeleted      Boolean         @default(false)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  lender         User            @relation("LoanOfferLender", fields: [lenderId], references: [id], onDelete: Cascade)
+  loanRequest    LoanRequest     @relation(fields: [loanRequestId], references: [id], onDelete: Cascade)
+
+  @@unique([loanRequestId, lenderId])
+  @@index([lenderId, status])
+  @@index([isDeleted])
+}
+
+model LoanGuarantor {
+  id        String   @id @default(cuid())
+  loanId    String
+  userId    String
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  loan      Loan     @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([loanId, userId])
+  @@index([userId])
+}
+
+model Transaction {
+  id              String            @id @default(cuid())
+  transactionId   String            @unique @default(uuid())
+  senderId        String
+  receiverId      String
+  loanId          String?
+  amount          Decimal           @db.Decimal(15, 2)
+  type            TransactionType
+  status          TransactionStatus @default(PENDING)
+  paymentMethod   PaymentMethod?
+  gatewayId       String?
+  gatewayResponse Json?
+  description     String?
+  fees            Decimal           @default(0) @db.Decimal(15, 2)
+  netAmount       Decimal           @db.Decimal(15, 2)
+  isDeleted       Boolean           @default(false)
+  deletedAt       DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  completedAt     DateTime?
+  repayments      Repayment[]
+  loan            Loan?             @relation(fields: [loanId], references: [id])
+  receiver        User              @relation("ReceivedTransactions", fields: [receiverId], references: [id])
+  sender          User              @relation("SentTransactions", fields: [senderId], references: [id])
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([loanId])
+  @@index([type, status])
+  @@index([createdAt])
+  @@index([isDeleted])
+}
+
+model Repayment {
+  id                String       @id @default(cuid())
+  loanId            String
+  installmentNumber Int
+  dueAmount         Decimal      @db.Decimal(15, 2)
+  paidAmount        Decimal      @default(0) @db.Decimal(15, 2)
+  dueDate           DateTime
+  paidDate          DateTime?
+  isLate            Boolean      @default(false)
+  lateDays          Int          @default(0)
+  penaltyAmount     Decimal      @default(0) @db.Decimal(15, 2)
+  status            String       @default("PENDING")
+  transactionId     String?
+  isDeleted         Boolean      @default(false)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  loan              Loan         @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  transaction       Transaction? @relation(fields: [transactionId], references: [id])
+
+  @@index([loanId])
+  @@index([dueDate])
+  @@index([status])
+  @@index([isDeleted])
+}
+
+model TrustScoreHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  loanId    String?
+  oldScore  Int
+  newScore  Int
+  change    Int
+  reason    String
+  metadata  Json?
+  createdAt DateTime @default(now())
+  loan      Loan?    @relation(fields: [loanId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([loanId])
+  @@index([createdAt])
+  @@index([reason])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  data      Json?
+  isRead    Boolean          @default(false)
+  isDeleted Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  readAt    DateTime?
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@index([isDeleted])
+}
+
+model PlatformSettings {
+  id                       String   @id @default(cuid())
+  platformFeePercentage    Decimal  @default(1.0) @db.Decimal(5, 2)
+  maxLoanAmount            Decimal  @default(10000) @db.Decimal(15, 2)
+  minLoanAmount            Decimal  @default(10) @db.Decimal(15, 2)
+  lateFeePercentage        Decimal  @default(2.0) @db.Decimal(5, 2)
+  maxLateDaysBeforeDefault Int      @default(30)
+  trustScoreWeight         Json
+  minInterestRate          Decimal  @default(1.0) @db.Decimal(5, 2)
+  maxInterestRate          Decimal  @default(20.0) @db.Decimal(5, 2)
+  minLoanDurationDays      Int      @default(7)
+  maxLoanDurationDays      Int      @default(365)
+  requireGuarantor         Boolean  @default(false)
+  minGuarantors            Int      @default(0)
+  maxGuarantors            Int      @default(3)
+  updatedAt                DateTime @updatedAt
+  updatedBy                String
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  entityType String
+  entityId   String?
+  oldData    Json?
+  newData    Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
 
 enum UserRole {
   USER
@@ -30,6 +467,7 @@ enum MaritalStatus {
   DIVORCED
   WIDOWED
 }
+
 enum VerificationStatus {
   PENDING
   VERIFIED
@@ -53,6 +491,7 @@ enum LoanStatus {
   DEFAULTED
   CANCELLED
   OVERDUE
+  PAYMENT_INITIATED
 }
 
 enum LoanRequestStatus {
@@ -112,608 +551,11 @@ enum NotificationType {
   GUARANTOR_REQUEST
 }
 
-// ==================== CORE USER TABLES ====================
-
 enum UserCategory {
-  EXCELLENT  // All loans paid on time, >20 loans
-  GOOD       // All loans paid on time, 10-20 loans
-  TRUSTABLE  // All loans paid on time, 5-9 loans
-  MODERATE   // Few delays (<3 days), 1-4 loans
-  RISKY      // Multiple delays (>3 days) or 1 default
-  DEFAULT    // Multiple defaults or severe delays
-}
-
-model User {
-  id                    String           @id @default(cuid())
-  email                 String           @unique
-  phone                 String           @unique
-  password              String
-  role                  UserRole         @default(USER)
-  status                UserStatus       @default(PENDING)
-  category              UserCategory     @default(MODERATE)
-  trustScore            Int              @default(50) // 0-100 scale
-  
-  // Personal Information
-  firstName             String
-  lastName              String
-  dateOfBirth           DateTime
-  maritalStatus         MaritalStatus
-  nationalId            String           @unique
-  nationalIdVerified    Boolean          @default(false)
-  profilePicture        String?
-  
-  // Contact Information
-  emailVerified         Boolean          @default(false)
-  phoneVerified         Boolean          @default(false)
-  twoFactorEnabled      Boolean          @default(false)
-  
-  // Financial Information
-  totalBorrowed         Decimal          @default(0) @db.Decimal(15, 2)
-  totalLent             Decimal          @default(0) @db.Decimal(15, 2)
-  totalRepaid           Decimal          @default(0) @db.Decimal(15, 2)
-  currentDebt           Decimal          @default(0) @db.Decimal(15, 2)
-  walletBalance         Decimal          @default(0) @db.Decimal(15, 2)
-  
-  // Statistics
-  totalLoansTaken       Int              @default(0)
-  totalLoansGiven       Int              @default(0)
-  loansPaidOnTime       Int              @default(0)
-  loansPaidLate         Int              @default(0)
-  loansDefaulted        Int              @default(0)
-  avgRepaymentTime      Int?             // In days (negative for early, positive for late)
-  
-  // Soft Delete
-  isDeleted             Boolean          @default(false)
-  deletedAt             DateTime?
-  
-  // Timestamps
-  createdAt             DateTime         @default(now())
-  updatedAt             DateTime         @updatedAt
-  lastLoginAt           DateTime?
-  
-  // Relations
-  address               Address?
-  familyDetails         FamilyDetails?
-  verificationDocuments VerificationDocument[]
-  loansAsBorrower       Loan[]           @relation("BorrowerLoans")
-  loansAsLender         Loan[]           @relation("LenderLoans")
-  loanRequests          LoanRequest[]
-  sentTransactions      Transaction[]    @relation("SentTransactions")
-  receivedTransactions  Transaction[]    @relation("ReceivedTransactions")
-  notifications         Notification[]
-  guarantorLoans        LoanGuarantor[]
-  trustScoreHistory     TrustScoreHistory[]
-  loanOffers           LoanOffer[]        @relation("LoanOfferLender")
-  
-  @@index([category])
-  @@index([trustScore])
-  @@index([currentDebt])
-  @@index([isDeleted])
-}
-
-// ==================== LOCATION TABLES (Pre-seeded) ====================
-
-// ==================== LOCATION TABLES (Pre-seeded) ====================
-
-model Country {
-  id          String    @id @default(cuid())
-  name        String    @unique
-  code        String    @unique // ISO code
-  currency    String
-  phonePrefix String
-  isActive    Boolean   @default(true)
-  isDeleted   Boolean   @default(false)
-  
-  provinces   Province[]
-  addresses   Address[]
-  
-  @@index([name])
-  @@index([isActive])
-}
-
-model Province {
-  id        String   @id @default(cuid())
-  name      String
-  code      String?
-  countryId String
-  isActive  Boolean  @default(true)
-  isDeleted Boolean  @default(false)
-  
-  country   Country  @relation(fields: [countryId], references: [id], onDelete: Cascade)
-  districts District[]
-  addresses Address[]
-  
-  @@unique([countryId, name])
-  @@index([name])
-  @@index([isActive])
-}
-
-model District {
-  id         String   @id @default(cuid())
-  name       String
-  code       String?
-  provinceId String
-  isActive   Boolean  @default(true)
-  isDeleted  Boolean  @default(false)
-  
-  province   Province @relation(fields: [provinceId], references: [id], onDelete: Cascade)
-  sectors    Sector[]
-  addresses  Address[]
-  
-  @@unique([provinceId, name])
-  @@index([name])
-  @@index([isActive])
-}
-
-model Sector {
-  id         String   @id @default(cuid())
-  name       String
-  code       String?
-  districtId String
-  isActive   Boolean  @default(true)
-  isDeleted  Boolean  @default(false)
-  
-  district   District @relation(fields: [districtId], references: [id], onDelete: Cascade)
-  cells      Cell[]
-  addresses  Address[]
-  
-  @@unique([districtId, name])
-  @@index([name])
-  @@index([isActive])
-}
-
-model Cell {
-  id        String   @id @default(cuid())
-  name      String
-  code      String?
-  sectorId  String
-  isActive  Boolean  @default(true)
-  isDeleted Boolean  @default(false)
-  
-  sector    Sector   @relation(fields: [sectorId], references: [id], onDelete: Cascade)
-  villages  Village[]
-  addresses Address[]
-  
-  @@unique([sectorId, name])
-  @@index([name])
-  @@index([isActive])
-}
-
-model Village {
-  id       String   @id @default(cuid())
-  name     String
-  code     String?
-  cellId   String
-  isActive Boolean  @default(true)
-  isDeleted Boolean @default(false)
-  
-  cell     Cell     @relation(fields: [cellId], references: [id], onDelete: Cascade)
-  addresses Address[]
-  
-  @@unique([cellId, name])
-  @@index([name])
-  @@index([isActive])
-}
-
-// ==================== ADDRESS & FAMILY ====================
-
-model Address {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  street    String?
-  
-  // Location hierarchy
-  countryId String
-  provinceId String?
-  districtId String?
-  sectorId  String?
-  cellId    String?
-  villageId String?
-  
-  // Geo coordinates
-  latitude  Float?
-  longitude Float?
-  
-  // Soft Delete
-  isDeleted Boolean  @default(false)
-  
-  // Relations
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  country   Country  @relation(fields: [countryId], references: [id])
-  province  Province? @relation(fields: [provinceId], references: [id])
-  district  District? @relation(fields: [districtId], references: [id])
-  sector    Sector?   @relation(fields: [sectorId], references: [id])
-  cell      Cell?     @relation(fields: [cellId], references: [id])
-  village   Village?  @relation(fields: [villageId], references: [id])
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model FamilyDetails {
-    user User? @relation(fields: [userId], references: [id])
-  id            String   @id @default(cuid())
-  userId        String   @unique
-  
-  // Spouse details
-  spouseName    String?
-  spouseNationalId String?
-  spousePhone   String?
-  
-  // Parents details
-  fatherName    String?
-  fatherNationalId String?
-  fatherPhone   String?
-  
-  motherName    String?
-  motherNationalId String?
-  motherPhone   String?
-  
-  // Emergency contact
-  emergencyContactName     String?
-  emergencyContactPhone    String?
-  emergencyContactRelation String?
-  updatedAt     DateTime @updatedAt
-}
-
-// ==================== VERIFICATION ====================
-
-model VerificationDocument {
-  id            String             @id @default(cuid())
-  userId        String
-  documentType  DocumentType
-  documentUrl   String
-  status        VerificationStatus @default(PENDING)
-  verifiedBy    String?            // Admin ID who verified
-  verifiedAt    DateTime?
-  rejectionReason String?
-  
-  // Soft Delete
-  isDeleted     Boolean            @default(false)
-  
-  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
-  
-  @@index([userId, status])
-  @@index([isDeleted])
-}
-
-// ==================== LOAN SYSTEM ====================
-
-model Loan {
-  id              String     @id @default(cuid())
-  loanNumber      String     @unique @default(uuid())
-  
-  // Parties
-  borrowerId      String
-  lenderId        String
-  
-  // Loan details
-  amount          Decimal    @db.Decimal(15, 2)
-  interestRate    Decimal    @default(6.0) @db.Decimal(5, 2) // 6% per month
-  durationDays    Int        // Total loan duration in days
-  purpose         String?
-  
-  // Dates
-  disbursedAt     DateTime?  // When money was sent to borrower
-  dueDate         DateTime?
-  repaidAt        DateTime?
-  
-  // Payment tracking
-  totalAmount     Decimal    @db.Decimal(15, 2) // amount + interest
-  amountPaid      Decimal    @default(0) @db.Decimal(15, 2)
-  amountDue       Decimal    @db.Decimal(15, 2) // totalAmount - amountPaid
-  
-  // Status & flags
-  status          LoanStatus @default(PENDING)
-  isLate          Boolean    @default(false)
-  lateDays        Int        @default(0)
-  penaltyAmount   Decimal    @default(0) @db.Decimal(15, 2)
-  
-  // Digital agreement
-  agreementUrl    String?
-  signedByBorrower Boolean   @default(false)
-  signedByLender  Boolean   @default(false)
-  
-  // Soft Delete
-  isDeleted       Boolean    @default(false)
-  deletedAt       DateTime?
-  
-  // Relations
-  borrower        User       @relation("BorrowerLoans", fields: [borrowerId], references: [id])
-  lender          User       @relation("LenderLoans", fields: [lenderId], references: [id])
-  repayments      Repayment[]
-  transactions    Transaction[]
-  guarantors      LoanGuarantor[]
-  trustScoreHistories TrustScoreHistory[]
-  
-  // Timestamps
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
-  
-  @@index([borrowerId, status])
-  @@index([lenderId, status])
-  @@index([dueDate])
-  @@index([status])
-  @@index([isDeleted])
-}
-
-model LoanRequest {
-  id              String           @id @default(cuid())
-  borrowerId      String
-  loanNumber      String           @unique @default(uuid())
-  
-  // Request details
-  amount          Decimal          @db.Decimal(15, 2)
-  minAmount       Decimal?         @db.Decimal(15, 2) // For partial funding
-  interestRate    Decimal          @default(6.0) @db.Decimal(5, 2)
-  durationDays    Int
-  purpose         String?
-  
-  // Funding
-  amountFunded    Decimal          @default(0) @db.Decimal(15, 2)
-  amountNeeded    Decimal          @db.Decimal(15, 2) // amount - amountFunded
-  
-  // Status
-  status          LoanRequestStatus @default(OPEN)
-  fundingDeadline DateTime?        // When request expires
-  
-  // Visibility
-  isPublic        Boolean          @default(true)
-  maxLenders      Int              @default(1) // 1 for single lender, >1 for multiple
-  
-  // Soft Delete
-  isDeleted       Boolean          @default(false)
-  
-  // Relations
-  borrower        User             @relation(fields: [borrowerId], references: [id], onDelete: Cascade)
-  loanOffers      LoanOffer[]
-  
-  // Timestamps
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  expiresAt       DateTime?        // Auto-calc: createdAt + 7 days
-  
-  @@index([borrowerId])
-  @@index([status, isPublic])
-  @@index([expiresAt])
-  @@index([isDeleted])
-}
-
-model LoanOffer {
-  id              String         @id @default(cuid())
-  loanRequestId   String
-  lenderId        String
-  amount          Decimal        @db.Decimal(15, 2)
-  interestRate    Decimal        @db.Decimal(5, 2)
-  status          LoanOfferStatus @default(PENDING)
-  
-  // Counter offer details
-  isCounterOffer  Boolean        @default(false)
-  message         String?
-  
-  // Soft Delete
-  isDeleted       Boolean        @default(false)
-  
-  // Relations
-  loanRequest     LoanRequest    @relation(fields: [loanRequestId], references: [id], onDelete: Cascade)
-  lender          User           @relation("LoanOfferLender", fields: [lenderId], references: [id], onDelete: Cascade)
-  
-  // Timestamps
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  
-  @@unique([loanRequestId, lenderId])
-  @@index([lenderId, status])
-  @@index([isDeleted])
-}
-
-// ==================== GUARANTOR SYSTEM ====================
-
-model LoanGuarantor {
-  id              String   @id @default(cuid())
-  loanId          String
-  userId          String
-  
-  // Soft Delete
-  isDeleted       Boolean  @default(false)
-  
-  // Relations
-  loan            Loan     @relation(fields: [loanId], references: [id], onDelete: Cascade)
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  // Timestamps
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  @@unique([loanId, userId])
-  @@index([userId])
-}
-
-// ==================== PAYMENT & TRANSACTIONS ====================
-
-model Transaction {
-  id              String            @id @default(cuid())
-  transactionId   String            @unique @default(uuid())
-  
-  // Parties
-  senderId        String
-  receiverId      String
-  loanId          String?
-  
-  // Transaction details
-  amount          Decimal           @db.Decimal(15, 2)
-  type            TransactionType
-  status          TransactionStatus @default(PENDING)
-  paymentMethod   PaymentMethod?
-  
-  // Payment gateway details
-  gatewayId       String?           // Gateway transaction ID
-  gatewayResponse Json?             // Raw response from payment gateway
-  
-  // Metadata
-  description     String?
-  fees            Decimal           @default(0) @db.Decimal(15, 2)
-  netAmount       Decimal           @db.Decimal(15, 2) // amount - fees
-  
-  // Soft Delete
-  isDeleted       Boolean           @default(false)
-  deletedAt       DateTime?
-  
-  // Relations
-  sender          User              @relation("SentTransactions", fields: [senderId], references: [id])
-  receiver        User              @relation("ReceivedTransactions", fields: [receiverId], references: [id])
-  loan            Loan?             @relation(fields: [loanId], references: [id])
-  repayments      Repayment[]
-  
-  // Timestamps
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  completedAt     DateTime?
-  
-  @@index([senderId])
-  @@index([receiverId])
-  @@index([loanId])
-  @@index([type, status])
-  @@index([createdAt])
-  @@index([isDeleted])
-}
-
-model Repayment {
-  id                String     @id @default(cuid())
-  loanId            String
-  installmentNumber Int        // 1, 2, 3...
-  
-  // Payment details
-  dueAmount         Decimal    @db.Decimal(15, 2)
-  paidAmount        Decimal    @default(0) @db.Decimal(15, 2)
-  dueDate           DateTime
-  paidDate          DateTime?
-  
-  // Late payment
-  isLate            Boolean    @default(false)
-  lateDays          Int        @default(0)
-  penaltyAmount     Decimal    @default(0) @db.Decimal(15, 2)
-  
-  // Status
-  status            String     @default("PENDING") // PENDING, PARTIAL, PAID, OVERDUE
-  
-  // Transaction reference
-  transactionId     String?
-  
-  // Soft Delete
-  isDeleted         Boolean    @default(false)
-  
-  // Relations
-  loan              Loan       @relation(fields: [loanId], references: [id], onDelete: Cascade)
-  transaction       Transaction? @relation(fields: [transactionId], references: [id])
-  
-  // Timestamps
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
-  
-  @@index([loanId])
-  @@index([dueDate])
-  @@index([status])
-  @@index([isDeleted])
-}
-
-// ==================== TRUST SCORE HISTORY ====================
-
-model TrustScoreHistory {
-  id          String   @id @default(cuid())
-  userId      String
-  loanId      String?
-  oldScore    Int
-  newScore    Int
-  change      Int      // newScore - oldScore
-  reason      String   // "LOAN_REPAID_ON_TIME", "LOAN_DEFAULTED", "MANUAL_ADJUSTMENT"
-  metadata    Json?    // Additional data like late days, amount, etc.
-  
-  // Relations
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  loan        Loan?    @relation(fields: [loanId], references: [id])
-  
-  createdAt   DateTime @default(now())
-  
-  @@index([userId])
-  @@index([loanId])
-  @@index([createdAt])
-  @@index([reason])
-}
-
-// ==================== NOTIFICATIONS ====================
-
-model Notification {
-  id              String           @id @default(cuid())
-  userId          String
-  type            NotificationType
-  title           String
-  message         String
-  data            Json?            // Additional data
-  isRead          Boolean          @default(false)
-  
-  // Soft Delete
-  isDeleted       Boolean          @default(false)
-  
-  // Relations
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  // Timestamps
-  createdAt       DateTime         @default(now())
-  readAt          DateTime?
-  
-  @@index([userId, isRead])
-  @@index([createdAt])
-  @@index([isDeleted])
-}
-
-// ==================== PLATFORM SETTINGS ====================
-
-model PlatformSettings {
-  id                     String  @id @default(cuid())
-  platformFeePercentage  Decimal @default(1.0) @db.Decimal(5, 2) // 1% platform fee
-  maxLoanAmount          Decimal @default(10000) @db.Decimal(15, 2)
-  minLoanAmount          Decimal @default(10) @db.Decimal(15, 2)
-  lateFeePercentage      Decimal @default(2.0) @db.Decimal(5, 2) // 2% late fee per month
-  maxLateDaysBeforeDefault Int   @default(30) // Days before marking as default
-  trustScoreWeight       Json    // JSON with weights for trust score calculation
-  
-  // Interest rate caps
-  minInterestRate        Decimal @default(1.0) @db.Decimal(5, 2)
-  maxInterestRate        Decimal @default(20.0) @db.Decimal(5, 2)
-  
-  // Loan duration
-  minLoanDurationDays    Int     @default(7)
-  maxLoanDurationDays    Int     @default(365)
-  
-  // Guarantor settings
-  requireGuarantor       Boolean @default(false)
-  minGuarantors          Int     @default(0)
-  maxGuarantors          Int     @default(3)
-  
-  updatedAt              DateTime @updatedAt
-  updatedBy              String   // Admin ID
-}
-
-// ==================== AUDIT LOGS ====================
-
-model AuditLog {
-  id          String   @id @default(cuid())
-  userId      String?  // NULL if system action
-  action      String
-  entityType  String
-  entityId    String?
-  oldData     Json?
-  newData     Json?
-  ipAddress   String?
-  userAgent   String?
-  
-  createdAt   DateTime @default(now())
-  
-  @@index([userId])
-  @@index([entityType, entityId])
-  @@index([createdAt])
+  EXCELLENT
+  GOOD
+  TRUSTABLE
+  MODERATE
+  RISKY
+  DEFAULT
 }
