@@ -517,7 +517,7 @@ export class LoanService {
       throw new ForbiddenException('Only the lender can confirm payment for this loan');
     }
 
-    if (loan.status !== 'PENDING') {
+    if (loan.status !== 'PAYMENT_INITIATED') {
       throw new BadRequestException('Loan is not pending confirmation');
     }
 
