@@ -217,37 +217,38 @@ model VerificationDocument {
 }
 
 model Loan {
-  id                  String              @id @default(cuid())
-  loanNumber          String              @unique @default(uuid())
-  borrowerId          String
-  lenderId            String
-  amount              Decimal             @db.Decimal(15, 2)
-  interestRate        Decimal             @default(6.0) @db.Decimal(5, 2)
-  durationDays        Int
-  purpose             String?
-  disbursedAt         DateTime?
-  dueDate             DateTime?
-  repaidAt            DateTime?
-  totalAmount         Decimal             @db.Decimal(15, 2)
-  amountPaid          Decimal             @default(0) @db.Decimal(15, 2)
-  amountDue           Decimal             @db.Decimal(15, 2)
-  status              LoanStatus          @default(PENDING)
-  isLate              Boolean             @default(false)
-  lateDays            Int                 @default(0)
-  penaltyAmount       Decimal             @default(0) @db.Decimal(15, 2)
-  agreementUrl        String?
-  signedByBorrower    Boolean             @default(false)
-  signedByLender      Boolean             @default(false)
-  isDeleted           Boolean             @default(false)
-  deletedAt           DateTime?
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
-  borrower            User                @relation("BorrowerLoans", fields: [borrowerId], references: [id])
-  lender              User                @relation("LenderLoans", fields: [lenderId], references: [id])
-  guarantors          LoanGuarantor[]
-  repayments          Repayment[]
-  transactions        Transaction[]
-  trustScoreHistories TrustScoreHistory[]
+  id                   String              @id @default(cuid())
+  loanNumber           String              @unique @default(uuid())
+  borrowerId           String
+  lenderId             String
+  amount               Decimal             @db.Decimal(15, 2)
+  interestRate         Decimal             @default(6.0) @db.Decimal(5, 2)
+  durationDays         Int
+  purpose              String?
+  disbursedAt          DateTime?
+  dueDate              DateTime?
+  repaidAt             DateTime?
+  totalAmount          Decimal             @db.Decimal(15, 2)
+  amountPaid           Decimal             @default(0) @db.Decimal(15, 2)
+  amountDue            Decimal             @db.Decimal(15, 2)
+  status               LoanStatus          @default(PENDING)
+  isLate               Boolean             @default(false)
+  lateDays             Int                 @default(0)
+  penaltyAmount        Decimal             @default(0) @db.Decimal(15, 2)
+  agreementUrl         String?
+  signedByBorrower     Boolean             @default(false)
+  signedByLender       Boolean             @default(false)
+  isDeleted            Boolean             @default(false)
+  deletedAt            DateTime?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  paymentProofDocument String?
+  borrower             User                @relation("BorrowerLoans", fields: [borrowerId], references: [id])
+  lender               User                @relation("LenderLoans", fields: [lenderId], references: [id])
+  guarantors           LoanGuarantor[]
+  repayments           Repayment[]
+  transactions         Transaction[]
+  trustScoreHistories  TrustScoreHistory[]
 
   @@index([borrowerId, status])
   @@index([lenderId, status])

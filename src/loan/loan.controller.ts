@@ -6,6 +6,8 @@ import { UpdateLoanDto } from './dto/update-loan.dto';
 import { LoanResponseDto } from './dto/loan-response.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { AcceptOfferDto } from './dto/accept-offer.dto';
+import { MarkPaidByBorrowerDto } from './dto/mark-paid-by-borrower.dto';
+// import { VerifyPaymentProofDto } from './dto/verify-payment-proof.dto';
 
 // Placeholder AdminGuard for demonstration
 class AdminGuard {
@@ -91,20 +93,39 @@ export class LoanController {
   @Patch(':id/mark-paid-by-borrower')
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: 'Borrower marks loan as paid (notifies lender for confirmation)' })
+  @ApiOperation({ summary: 'Borrower marks loan as paid (notifies lender for confirmation, requires payment proof document)' })
   @ApiParam({ name: 'id', example: 'loan-id-123' })
+  @ApiBody({
+    type: MarkPaidByBorrowerDto,
+    examples: {
+      default: {
+        summary: 'Example payment proof',
+        value: {
+          paymentProofDocument: 'https://example.com/payment-proof/receipt123.pdf'
+        }
+      }
+    }
+  })
   @ApiResponse({ status: 200, type: LoanResponseDto })
-  async markPaidByBorrower(@Param('id') id: string, @Req() req: any) {
-    return this.loanService.markPaidByBorrower(id, req.user.sub);
+  async markPaidByBorrower(
+    @Param('id') id: string,
+    @Body() body: MarkPaidByBorrowerDto,
+    @Req() req: any
+  ) {
+    return this.loanService.markPaidByBorrower(id, req.user.sub, body.paymentProofDocument);
   }
 
   @Patch(':id/confirm-payment-by-lender')
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: 'Lender confirms payment received and marks loan as REPAID' })
+  @ApiOperation({ summary: 'Lender verifies payment proof document and confirms payment (only lender can update)' })
   @ApiParam({ name: 'id', example: 'loan-id-123' })
+  // No request body needed, lender just confirms
   @ApiResponse({ status: 200, type: LoanResponseDto })
-  async confirmPaymentByLender(@Param('id') id: string, @Req() req: any) {
+  async confirmPaymentByLender(
+    @Param('id') id: string,
+    @Req() req: any
+  ) {
     return this.loanService.confirmPaymentByLender(id, req.user.sub);
   }
 

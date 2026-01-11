@@ -452,7 +452,7 @@ export class LoanService {
   /**
    * Borrower marks loan as paid - sends notification to lender for confirmation
    */
-  async markPaidByBorrower(loanId: string, actingBorrowerId: string): Promise<Loan> {
+  async markPaidByBorrower(loanId: string, actingBorrowerId: string, paymentProofDocument: string): Promise<Loan> {
     const loan = await this.prisma.loan.findUnique({ where: { id: loanId } });
 
     if (!loan || loan.isDeleted) {
@@ -471,12 +471,17 @@ export class LoanService {
       throw new BadRequestException('Loan is already marked as repaid');
     }
 
-    // Update loan to indicate borrower claims payment
+    if (!paymentProofDocument) {
+      throw new BadRequestException('Payment proof document is required');
+    }
+
+    // Update loan to indicate borrower claims payment and attach document
     const updatedLoan = await this.prisma.loan.update({
       where: { id: loanId },
       data: {
         status: 'PAYMENT_INITIATED' as LoanStatus, // Payment initiated by borrower, pending lender confirmation
         amountPaid: loan.totalAmount, // Borrower claims full payment
+        paymentProofDocument,
       },
     });
 
@@ -504,9 +509,12 @@ export class LoanService {
   }
 
   /**
-   * Lender confirms payment received - marks loan as REPAID and updates trust scores
+   * Lender verifies payment proof document and confirms payment (only lender can update)
    */
-  async confirmPaymentByLender(loanId: string, actingLenderId: string): Promise<Loan> {
+  async confirmPaymentByLender(
+    loanId: string,
+    actingLenderId: string
+  ): Promise<Loan> {
     const loan = await this.prisma.loan.findUnique({ where: { id: loanId } });
 
     if (!loan || loan.isDeleted) {
@@ -525,6 +533,10 @@ export class LoanService {
       throw new BadRequestException('Loan is already repaid');
     }
 
+    if (!loan.paymentProofDocument) {
+      throw new BadRequestException('No payment proof document provided by borrower.');
+    }
+
     const now = new Date();
     const lateDays = loan.dueDate
       ? Math.max(0, Math.floor((now.getTime() - loan.dueDate.getTime()) / (1000 * 60 * 60 * 24)))
@@ -538,7 +550,6 @@ export class LoanService {
         repaidAt: now,
         amountDue: 0,
         isLate: lateDays > 0,
-        lateDays,
       },
     });
 
