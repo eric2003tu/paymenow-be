@@ -195,7 +195,16 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
-        address: true,
+        address: {
+          include: {
+            country: true,
+            province: true,
+            district: true,
+            sector: true,
+            cell: true,
+            village: true,
+          },
+        },
         familyDetails: true,
         trustScoreHistory: {
           orderBy: { createdAt: 'desc' },
@@ -613,8 +622,32 @@ export class AuthService {
 
     const { password, ...userWithoutPassword } = user;
 
+    // Map address to include name fields if available, otherwise just IDs
+    let address: any = null;
+    if (userWithoutPassword.address) {
+      const addr = userWithoutPassword.address;
+      address = {
+        id: addr.id,
+        street: addr.street,
+        countryId: addr.countryId,
+        countryName: (addr as any).country?.name ?? undefined,
+        provinceId: addr.provinceId ?? undefined,
+        provinceName: (addr as any).province?.name ?? undefined,
+        districtId: addr.districtId ?? undefined,
+        districtName: (addr as any).district?.name ?? undefined,
+        sectorId: addr.sectorId ?? undefined,
+        sectorName: (addr as any).sector?.name ?? undefined,
+        cellId: addr.cellId ?? undefined,
+        cellName: (addr as any).cell?.name ?? undefined,
+        villageId: addr.villageId ?? undefined,
+        villageName: (addr as any).village?.name ?? undefined,
+        latitude: addr.latitude,
+        longitude: addr.longitude,
+      };
+    }
     return {
       ...userWithoutPassword,
+      ...(address ? { address } : {}),
       totalBorrowed: toNumber(userWithoutPassword.totalBorrowed),
       totalLent: toNumber(userWithoutPassword.totalLent),
       totalRepaid: toNumber(userWithoutPassword.totalRepaid),

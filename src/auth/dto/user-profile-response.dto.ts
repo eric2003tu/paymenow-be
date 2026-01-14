@@ -331,11 +331,17 @@ export class UserProfileResponseDto {
     id: string;
     street: string;
     countryId: string;
+    countryName?: string;
     provinceId?: string;
+    provinceName?: string;
     districtId?: string;
+    districtName?: string;
     sectorId?: string;
+    sectorName?: string;
     cellId?: string;
+    cellName?: string;
     villageId?: string;
+    villageName?: string;
     latitude?: number;
     longitude?: number;
   };
